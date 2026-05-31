@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx jest *)",
+      "Bash(npx vitest *)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(npx next *)",
+      "Bash(npx nest *)",
+      "Bash(cd /d/Infocus/jphish/backend && find src -type d 2>/dev/null | head -80)",
+      "Read(//d/d/Infocus/jphish/backend/**)",
+      "Bash(xargs grep -l \"\")",
+      "Bash(xargs grep -ln \"@Entity\\\\|@Column\")",
+      "Read(//d/d/Infocus/jphish/frontend/src/**)",
+      "Bash(grep -nA15 \"list\\(\" src/modules/auth/services/audit.service.ts)",
+      "Skill(backend-dev)",
+      "Skill(backend-dev:*)",
+      "Bash(docker exec *)",
+      "Bash(node -e ' *)",
+      "Skill(frontend-dev)",
+      "Skill(frontend-dev:*)"
+    ]
+  }
+}
