@@ -49,4 +49,4 @@ ENV HOSTNAME=0.0.0.0
 
 EXPOSE 3000
 
-CMD ["npm", "start", "--workspace=frontend"]
+CMD ["sh", "-c", "cd /app/frontend && node_modules/.bin/next start -p 3000 -H 0.0.0.0"]
