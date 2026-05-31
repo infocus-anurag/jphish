@@ -33,10 +33,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-COPY --from=base /app/package.json ./
+# Lockfile MUST be copied before `npm ci` (npm ci refuses to run without it).
+COPY --from=base /app/package.json /app/package-lock.json* ./
 COPY --from=base /app/frontend/package.json ./frontend/
 
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 COPY --from=builder /app/frontend/.next ./frontend/.next
 COPY --from=builder /app/frontend/public ./frontend/public
