@@ -152,6 +152,11 @@ If you change wiring again, **update this file and the relevant skill** so the m
   TypeORM 0.3 · Postgres 15 · Bull 4 · Redis 7 · nodemailer · bcrypt · passport-jwt · class-validator.
 - **Mail dev modes** (`MAIL_DEV_MODE` in `backend/.env`): `ethereal` (fake preview inbox), `file`
   (writes `.eml` to `backend/tmp/mail`), empty (real SMTP). Read at boot → restart after changing.
+- **Mail provider** (`MAIL_PROVIDER`): empty = per-profile SMTP (default); `mailgun` = send over
+  Mailgun's HTTPS REST API (`MAILGUN_API_KEY` / `MAILGUN_DOMAIN` / `MAILGUN_API_HOST`) instead of SMTP —
+  needed where outbound SMTP is blocked (e.g. Railway Free/Hobby, where `smtp.gmail.com:587` times out).
+  All transports route through the one choke point `EmailService.createTransporter()`; `MAIL_DEV_MODE`
+  still wins when set.
 
 ---
 

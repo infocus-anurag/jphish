@@ -107,13 +107,21 @@ API_CORS_ORIGIN=https://<frontend-domain>
 # This MUST be the phish-server's public domain (fill in after Step 5).
 PUBLIC_LANDING_URL=https://<phish-domain>
 
-# Mail — real SMTP. For Gmail use a 16-char App Password. Leave MAIL_DEV_MODE empty for real send.
-MAIL_HOST=smtp.gmail.com
-MAIL_PORT=587
-MAIL_USER=<smtp user>
-MAIL_PASSWORD=<smtp app password>
-MAIL_FROM=noreply@yourdomain.com
+# Mail — IMPORTANT: Railway BLOCKS outbound SMTP (ports 25/465/587) on Free,
+# Trial and Hobby plans, so smtp.gmail.com:587 just times out. Send over
+# Mailgun's HTTPS REST API instead (port 443, never blocked):
+MAIL_PROVIDER=mailgun
+MAILGUN_API_KEY=<your mailgun private API key>
+MAILGUN_DOMAIN=<your verified domain, e.g. mg.yourdomain.com>
+MAILGUN_API_HOST=api.mailgun.net   # or api.eu.mailgun.net for EU accounts
+MAIL_FROM=noreply@mg.yourdomain.com  # must be on MAILGUN_DOMAIN
 MAIL_DEV_MODE=
+# The From address actually used is the SMTP profile's fromEmail/fromName (set
+# in the UI) — make sure that profile's From is on your Mailgun domain too.
+#
+# Alternative (only if you upgrade to Railway Pro, which unblocks SMTP): leave
+# MAIL_PROVIDER empty and use real SMTP via the per-profile credentials:
+#   MAIL_HOST=smtp.gmail.com  MAIL_PORT=587  MAIL_USER=...  MAIL_PASSWORD=<app password>
 
 # Bull dashboard
 BULL_DASHBOARD_URL=/bull
@@ -207,6 +215,9 @@ to `npm run migration:run` instead of relying on `synchronize`.
 - **Cross-site cookies** — frontend and API are different domains, so the refresh cookie is
   `SameSite=None; Secure` (that's why `COOKIE_SECURE=true`). If login "works but doesn't persist",
   this is usually the cause. Cleanest fix is custom domains under one apex (below).
+- **Outbound SMTP is blocked** on Free/Trial/Hobby — a saved Gmail/SMTP profile will fail its "Test"
+  with `Connection timeout`. Use `MAIL_PROVIDER=mailgun` (above) so mail goes over HTTPS, or upgrade to
+  Pro (which unblocks SMTP) and redeploy.
 - **Frontend env is build-time** — redeploy frontend after changing any `NEXT_PUBLIC_*`.
 - **Redis must be reachable** — the backend opens a Redis connection at boot for Bull; if Redis vars
   are wrong the service crash-loops.
