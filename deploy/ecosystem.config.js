@@ -5,8 +5,8 @@
 //   pm2 save
 //
 // The backend process boots BOTH Nest apps in one Node process:
-//   - admin API   on PORT       (3001)  -> proxied by nginx at jphish.infocusit.in
-//   - phish-server on PHISH_PORT (3002)  -> proxied by nginx at links.infocusit.in
+//   - admin API   on PORT       (3101)  -> proxied by nginx at jphish.infocusit.in
+//   - phish-server on PHISH_PORT (3102)  -> proxied by nginx at links.infocusit.in
 //
 // Paths assume the repo lives at /home/support/htdocs/jphish.infocusit.in.
 // Edit the two `cwd` values if you cloned somewhere else.
@@ -32,7 +32,7 @@ module.exports = {
       cwd: '/home/support/htdocs/jphish.infocusit.in/frontend',
       script: 'npm',
       // `next start` bound to localhost only; nginx terminates TLS and proxies in.
-      args: 'run start -- -H 127.0.0.1 -p 3000',
+      args: 'run start -- -H 127.0.0.1 -p 3100',
       instances: 1,
       exec_mode: 'fork',
       autorestart: true,

@@ -9,15 +9,15 @@ Target: **Native + PM2**, PostgreSQL + Redis via apt, CloudPanel nginx + Let's E
 | Phish domain | `links.infocusit.in` (public tracking + landing — **create this**) |
 | Site user | `support` |
 | Repo path on server | `/home/support/htdocs/jphish.infocusit.in` |
-| Ports (localhost only) | frontend `3000`, admin API `3001`, phish-server `3002`, Postgres `5432`, Redis `6379` |
+| Ports (localhost only) | frontend `3100`, admin API `3101`, phish-server `3102`, Postgres `5432`, Redis `6379` |
 
 Final request flow:
 ```
-Browser ──HTTPS──> CloudPanel nginx ──┬─ /api,/swagger,/bull ─> 127.0.0.1:3001 (admin API)
-  jphish.infocusit.in                 └─ /                    ─> 127.0.0.1:3000 (Next.js)
-Target  ──HTTPS──> CloudPanel nginx ──── /                   ─> 127.0.0.1:3002 (phish-server)
+Browser ──HTTPS──> CloudPanel nginx ──┬─ /api,/swagger,/bull ─> 127.0.0.1:3101 (admin API)
+  jphish.infocusit.in                 └─ /                    ─> 127.0.0.1:3100 (Next.js)
+Target  ──HTTPS──> CloudPanel nginx ──── /                   ─> 127.0.0.1:3102 (phish-server)
   links.infocusit.in
-PM2 runs: jphish-backend (boots :3001 AND :3002) + jphish-frontend (:3000)
+PM2 runs: jphish-backend (boots :3101 AND :3102) + jphish-frontend (:3100)
 ```
 
 ---
@@ -191,7 +191,7 @@ pm2 startup systemd -u support --hp /home/support   # copy/paste the sudo line i
 
 ### 8b. Phish site (links.infocusit.in)
 1. CloudPanel → **+ Add Site** → **Create a Reverse Proxy** →
-   domain `links.infocusit.in`, reverse proxy URL `http://127.0.0.1:3002`, same site user `support`.
+   domain `links.infocusit.in`, reverse proxy URL `http://127.0.0.1:3102`, same site user `support`.
 2. (Optional) **Vhost** tab → match [`deploy/nginx-phish-locations.conf`](nginx-phish-locations.conf).
 3. **SSL/TLS** tab → **Let's Encrypt** (requires the `links` A record from step 0).
 
@@ -216,7 +216,7 @@ In a browser:
 - [ ] `COOKIE_SECURE=true`, `COOKIE_DOMAIN=jphish.infocusit.in` (no leading dot).
 - [ ] Postgres/Redis bound to `127.0.0.1`; Redis `requirepass` set.
 - [ ] Firewall (if you enable UFW, keep yourself in): allow `22`, `80`, `443`, CloudPanel `8443`;
-      do **not** expose `3000/3001/3002/5432/6379`.
+      do **not** expose `3100/3101/3102/5432/6379`.
 - [ ] Rotate the bootstrap admin password on first login.
 - [ ] Set real `MAIL_*` creds; `PUBLIC_LANDING_URL=https://links.infocusit.in` so tracking pixels load.
 - [ ] Nightly `pg_dump` backup (cron).
