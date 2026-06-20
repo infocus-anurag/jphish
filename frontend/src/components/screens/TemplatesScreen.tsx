@@ -467,7 +467,7 @@ function TemplateEditor({ initial, isDuplicate, onClose }: TemplateEditorProps):
             />
             <div className="field-help">
               Links (<code className="mono">{'<a href>'}</code>) and a tracking pixel are added
-              automatically at send time — don't add them yourself.
+              automatically at send time — don&apos;t add them yourself.
             </div>
             {unknownVars.length > 0 && (
               <div style={{ display: 'flex', gap: 5, alignItems: 'center', color: 'var(--warn)', fontSize: 11.5, marginTop: 5 }}>

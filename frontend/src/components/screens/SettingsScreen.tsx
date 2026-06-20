@@ -285,7 +285,8 @@ function TestProfileModal({ profile, onClose }: { profile: SmtpProfile; onClose:
     >
       <div style={{ display: 'grid', gap: 8 }}>
         <div style={{ fontSize: 12.5, color: 'var(--fg-subtle)' }}>
-          We'll verify the connection and send a real test email so you can confirm deliverability.
+          We&apos;ll verify the connection and send a real test email so you can confirm
+          deliverability.
         </div>
         <div>
           <label className="field-label">Send test to</label>
