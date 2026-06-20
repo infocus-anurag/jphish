@@ -287,7 +287,14 @@ function CampaignDetailDrawer({
               type="button"
               className="btn primary"
               disabled={launch.isPending}
-              onClick={() => launch.mutate(camp.id)}
+              onClick={() => {
+                const n = s.totalRecipients;
+                const msg =
+                  n > 0
+                    ? `Launch "${camp.name}" and send the email to ${n} recipient${n === 1 ? '' : 's'} now?`
+                    : `Launch "${camp.name}"? Recipients will be pulled from its group at send time.`;
+                if (confirm(msg)) launch.mutate(camp.id);
+              }}
             >
               <I.send size={12} /> {launch.isPending ? 'Launching…' : 'Launch'}
             </button>

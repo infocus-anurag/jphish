@@ -55,6 +55,17 @@ export async function deleteLandingPage(id: string): Promise<void> {
   await apiClient.delete(`/landing-pages/${id}`);
 }
 
+export interface ClonedPage {
+  html: string;
+  title: string;
+  sourceUrl: string;
+}
+
+export async function cloneLandingPage(url: string): Promise<ClonedPage> {
+  const { data } = await apiClient.post<ClonedPage>('/landing-pages/clone', { url });
+  return data;
+}
+
 export function publicLandingPageUrl(slug: string, trackingId = 'preview'): string {
   const base =
     process.env.NEXT_PUBLIC_PHISH_URL || 'http://localhost:3002';

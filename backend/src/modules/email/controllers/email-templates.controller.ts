@@ -16,7 +16,7 @@ import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { AuditContext } from '@/modules/auth/services/audit.service';
 
 import { EmailTemplateService } from '../services/email-template.service';
-import { CreateEmailTemplateDto, UpdateEmailTemplateDto } from '../dto';
+import { CreateEmailTemplateDto, UpdateEmailTemplateDto, TestEmailTemplateDto } from '../dto';
 
 @Controller('email-templates')
 @UseGuards(JwtAuthGuard)
@@ -82,5 +82,18 @@ export class EmailTemplatesController {
     const template = await this.emailTemplateService.findById(id);
     const variables = body.variables || {};
     return this.emailTemplateService.renderTemplate(template, variables);
+  }
+
+  @Post(':id/test')
+  async test(
+    @Param('id') id: string,
+    @Body() dto: TestEmailTemplateDto,
+    @Request() req: any,
+  ) {
+    const ctx: AuditContext = {
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    };
+    return this.emailTemplateService.sendTest(id, dto, req.user, ctx);
   }
 }

@@ -14,7 +14,12 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { LandingPageService } from '../services/landing-page.service';
-import { CreateLandingPageDto, UpdateLandingPageDto } from '../dto/landing-page.dto';
+import { LandingCloneService } from '../services/landing-clone.service';
+import {
+  CreateLandingPageDto,
+  UpdateLandingPageDto,
+  CloneLandingPageDto,
+} from '../dto/landing-page.dto';
 import { User } from '@/modules/auth/entities/user.entity';
 import { UserRole } from '@/modules/auth/enums/user-role.enum';
 import { CurrentUser } from '@/modules/auth/decorators/current-user.decorator';
@@ -27,7 +32,10 @@ import { RolesGuard } from '@/modules/auth/guards/roles.guard';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller({ path: 'landing-pages', version: '1' })
 export class LandingPagesController {
-  constructor(private readonly pages: LandingPageService) {}
+  constructor(
+    private readonly pages: LandingPageService,
+    private readonly cloneService: LandingCloneService,
+  ) {}
 
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Post()
@@ -35,6 +43,14 @@ export class LandingPagesController {
   @ApiOperation({ summary: 'Create a landing page' })
   create(@Body() dto: CreateLandingPageDto, @CurrentUser() user: User) {
     return this.pages.create(dto, user);
+  }
+
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Post('clone')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Clone a public web page into landing-page HTML' })
+  clone(@Body() dto: CloneLandingPageDto) {
+    return this.cloneService.clone(dto.url);
   }
 
   @Get()

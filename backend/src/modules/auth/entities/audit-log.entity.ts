@@ -28,6 +28,7 @@ export type AuditAction =
   | 'email_template.created'
   | 'email_template.updated'
   | 'email_template.deleted'
+  | 'email_template.tested'
   | 'landing_page.created'
   | 'landing_page.updated'
   | 'landing_page.deleted'

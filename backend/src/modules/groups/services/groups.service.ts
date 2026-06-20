@@ -97,11 +97,11 @@ export class GroupsService {
     await this.groups.remove(group);
   }
 
-  async addMembers(id: string, dto: AddMembersDto): Promise<{ added: number }> {
+  async addMembers(id: string, dto: AddMembersDto): Promise<{ added: number; skipped: number }> {
     const group = await this.groups.findOne({ where: { id } });
     if (!group) throw new NotFoundException('Group not found');
     const added = await this.upsertMembers(id, dto.members);
-    return { added };
+    return { added, skipped: dto.members.length - added };
   }
 
   async removeMember(groupId: string, email: string): Promise<void> {
@@ -118,7 +118,16 @@ export class GroupsService {
     const existing = (await this.members.find({ where: { groupId }, select: ['email'] })).map((m) =>
       m.email.toLowerCase(),
     );
-    const fresh = list.filter((m) => !existing.includes(m.email.toLowerCase()));
+    // Dedupe against members already in the group AND against duplicates within
+    // this same batch (a composite-PK collision would otherwise fail the insert).
+    const seen = new Set(existing);
+    const fresh: GroupMemberDto[] = [];
+    for (const m of list) {
+      const key = m.email.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      fresh.push(m);
+    }
     if (fresh.length === 0) return 0;
     const rows = fresh.map((m) =>
       this.members.create({

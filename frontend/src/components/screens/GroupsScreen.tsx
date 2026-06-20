@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { I } from '@/components/ui/Icons';
 import { Badge, Drawer } from '@/components/ui/Primitives';
+import { EmptyState, InlineLoading } from '@/components/ui/States';
 import { PageHeader } from '@/components/shell/PageHeader';
 import { useCan } from '@/lib/rbac';
+import { isValidEmail } from '@/lib/targets-import';
+import { ImportTargetsModal } from '@/components/screens/ImportTargetsModal';
 import {
   addGroupMembers,
   createGroup,
@@ -46,11 +49,7 @@ export function GroupsScreen(): JSX.Element {
         sub="Reusable groups of targets you can attach to campaigns."
         actions={
           canCreate ? (
-            <button
-              type="button"
-              className="btn primary"
-              onClick={() => setShowForm(true)}
-            >
+            <button type="button" className="btn primary" onClick={() => setShowForm(true)}>
               <I.plus size={13} /> New group
             </button>
           ) : null
@@ -83,8 +82,20 @@ export function GroupsScreen(): JSX.Element {
             )}
             {!isLoading && groups.length === 0 && (
               <tr>
-                <td colSpan={6} style={{ color: 'var(--fg-subtle)' }}>
-                  No groups yet.
+                <td colSpan={6}>
+                  <EmptyState
+                    icon="users"
+                    compact
+                    title="No target groups yet"
+                    message="Groups hold the people a campaign is sent to. Create one, then import targets from a CSV or paste them in."
+                    action={
+                      canCreate ? (
+                        <button type="button" className="btn primary" onClick={() => setShowForm(true)}>
+                          <I.plus size={13} /> New group
+                        </button>
+                      ) : undefined
+                    }
+                  />
                 </td>
               </tr>
             )}
@@ -124,31 +135,36 @@ export function GroupsScreen(): JSX.Element {
         </table>
       </div>
 
-      {showForm && <GroupForm onDone={() => setShowForm(false)} />}
-      {openId && <GroupDetailDrawer id={openId} onClose={() => setOpenId(null)} />}
+      {showForm && (
+        <GroupForm
+          onDone={() => setShowForm(false)}
+          onCreated={(id) => {
+            setShowForm(false);
+            setOpenId(id);
+          }}
+        />
+      )}
+      {openId && <GroupDetailDrawer id={openId} canEdit={canCreate} onClose={() => setOpenId(null)} />}
     </>
   );
 }
 
-function GroupDetailDrawer({ id, onClose }: { id: string; onClose: () => void }): JSX.Element {
+function GroupDetailDrawer({
+  id,
+  canEdit,
+  onClose,
+}: {
+  id: string;
+  canEdit: boolean;
+  onClose: () => void;
+}): JSX.Element {
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ['groups', id],
     queryFn: () => getGroup(id),
   });
-  const [csv, setCsv] = useState('');
-
-  const add = useMutation({
-    mutationFn: (members: Array<{ email: string; firstName?: string; lastName?: string }>) =>
-      addGroupMembers(id, members as any),
-    onSuccess: (r) => {
-      toast.success(`${r.added} member(s) added`);
-      setCsv('');
-      queryClient.invalidateQueries({ queryKey: ['groups', id] });
-      queryClient.invalidateQueries({ queryKey: ['groups'] });
-    },
-    onError: (e: any) => toast.error(e?.response?.data?.message || 'Failed'),
-  });
+  const [showImport, setShowImport] = useState(false);
+  const [search, setSearch] = useState('');
 
   const removeMember = useMutation({
     mutationFn: (email: string) => removeGroupMember(id, email),
@@ -159,114 +175,253 @@ function GroupDetailDrawer({ id, onClose }: { id: string; onClose: () => void })
     onError: (e: any) => toast.error(e?.response?.data?.message || 'Failed'),
   });
 
-  function parseCsv(): Array<{ email: string; firstName?: string; lastName?: string }> {
-    return csv
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const [email, firstName, lastName] = line.split(/[,\t]/).map((s) => s.trim());
-        return { email, firstName: firstName || undefined, lastName: lastName || undefined };
-      })
-      .filter((r) => r.email && /@/.test(r.email));
-  }
+  const members = data?.members ?? [];
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return members;
+    return members.filter((m) =>
+      [m.email, m.firstName, m.lastName, m.department, m.position]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().includes(q)),
+    );
+  }, [members, search]);
 
   return (
-    <Drawer onClose={onClose} width={640}>
-      <div style={{ padding: 22, display: 'grid', gap: 14 }}>
-        {isLoading || !data ? (
-          <div>Loading…</div>
-        ) : (
-          <>
-            <div>
-              <h2 style={{ margin: 0 }}>{data.name}</h2>
-              {data.description && (
-                <div style={{ color: 'var(--fg-subtle)', fontSize: 12.5 }}>
-                  {data.description}
+    <>
+      <Drawer onClose={onClose} width={680}>
+        <div style={{ padding: 22, display: 'grid', gap: 14 }}>
+          {isLoading || !data ? (
+            <InlineLoading label="Loading group…" />
+          ) : (
+            <>
+              <div>
+                <h2 style={{ margin: 0 }}>{data.name}</h2>
+                {data.description && (
+                  <div style={{ color: 'var(--fg-subtle)', fontSize: 12.5 }}>{data.description}</div>
+                )}
+              </div>
+
+              {canEdit && (
+                <div className="row" style={{ gap: 6 }}>
+                  <button type="button" className="btn primary" onClick={() => setShowImport(true)}>
+                    <I.upload size={13} /> Import targets
+                  </button>
                 </div>
               )}
-            </div>
-            <div>
-              <div className="field-label">Members ({data.members.length})</div>
-              <div className="card" style={{ padding: 0, maxHeight: 280, overflow: 'auto' }}>
-                <table className="table">
-                  <tbody>
-                    {data.members.map((m) => (
-                      <tr key={m.email}>
-                        <td className="mono" style={{ fontSize: 11.5 }}>
-                          {m.email}
-                        </td>
-                        <td>
-                          {[m.firstName, m.lastName].filter(Boolean).join(' ') || '—'}
-                        </td>
-                        <td style={{ color: 'var(--fg-subtle)', fontSize: 11.5 }}>
-                          {m.department || ''}
-                        </td>
-                        <td>
-                          <button
-                            type="button"
-                            className="btn ghost sm"
-                            onClick={() => removeMember.mutate(m.email)}
-                          >
-                            <I.x size={11} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {data.members.length === 0 && (
-                      <tr>
-                        <td colSpan={4} style={{ color: 'var(--fg-subtle)' }}>
-                          No members.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+
+              {canEdit && <QuickAddTarget groupId={id} existing={members} />}
+
+              <div>
+                <div className="row" style={{ justifyContent: 'space-between', marginBottom: 6 }}>
+                  <div className="field-label" style={{ margin: 0 }}>
+                    Members ({members.length})
+                  </div>
+                  {members.length > 6 && (
+                    <input
+                      className="input"
+                      style={{ height: 26, maxWidth: 200 }}
+                      placeholder="Search members…"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  )}
+                </div>
+
+                {members.length === 0 ? (
+                  <EmptyState
+                    icon="users"
+                    compact
+                    title="No targets yet"
+                    message="Import a CSV or paste a list to add the people this group will receive simulations."
+                    action={
+                      canEdit ? (
+                        <button type="button" className="btn primary" onClick={() => setShowImport(true)}>
+                          <I.upload size={13} /> Import targets
+                        </button>
+                      ) : undefined
+                    }
+                  />
+                ) : (
+                  <div className="card" style={{ padding: 0, maxHeight: 360, overflow: 'auto' }}>
+                    <table className="table">
+                      <tbody>
+                        {filtered.map((m) => (
+                          <tr key={m.email}>
+                            <td className="mono" style={{ fontSize: 11.5 }}>
+                              {m.email}
+                            </td>
+                            <td>{[m.firstName, m.lastName].filter(Boolean).join(' ') || '—'}</td>
+                            <td style={{ color: 'var(--fg-subtle)', fontSize: 11.5 }}>
+                              {[m.department, m.position].filter(Boolean).join(' · ') || ''}
+                            </td>
+                            {canEdit && (
+                              <td className="right" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  className="btn ghost sm"
+                                  onClick={() => removeMember.mutate(m.email)}
+                                >
+                                  <I.x size={11} />
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                        {filtered.length === 0 && (
+                          <tr>
+                            <td colSpan={4} style={{ color: 'var(--fg-subtle)' }}>
+                              No members match “{search}”.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
-            </div>
-            <div>
-              <div className="field-label">Add members (paste CSV: email,firstName,lastName)</div>
-              <textarea
-                className="input mono"
-                rows={6}
-                value={csv}
-                onChange={(e) => setCsv(e.target.value)}
-                placeholder={'alice@example.com,Alice,Smith\nbob@example.com,Bob,Jones'}
-              />
-              <button
-                type="button"
-                className="btn primary"
-                style={{ marginTop: 6 }}
-                disabled={add.isPending}
-                onClick={() => {
-                  const list = parseCsv();
-                  if (list.length === 0) {
-                    toast.error('No valid rows to add');
-                    return;
-                  }
-                  add.mutate(list);
-                }}
-              >
-                {add.isPending ? 'Adding…' : 'Add'}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </Drawer>
+            </>
+          )}
+        </div>
+      </Drawer>
+
+      {showImport && data && (
+        <ImportTargetsModal
+          groupId={id}
+          groupName={data.name}
+          existingMembers={members}
+          onClose={() => setShowImport(false)}
+        />
+      )}
+    </>
   );
 }
 
-function GroupForm({ onDone }: { onDone: () => void }): JSX.Element {
+function QuickAddTarget({
+  groupId,
+  existing,
+}: {
+  groupId: string;
+  existing: Array<{ email: string }>;
+}): JSX.Element {
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState({ email: '', firstName: '', lastName: '', department: '', position: '' });
+
+  const add = useMutation({
+    mutationFn: () =>
+      addGroupMembers(groupId, [
+        {
+          email: form.email.trim(),
+          firstName: form.firstName.trim() || undefined,
+          lastName: form.lastName.trim() || undefined,
+          department: form.department.trim() || undefined,
+          position: form.position.trim() || undefined,
+        } as any,
+      ]),
+    onSuccess: (r) => {
+      if (r.added > 0) toast.success('Target added');
+      else toast.info('That email is already in this group');
+      setForm({ email: '', firstName: '', lastName: '', department: '', position: '' });
+      queryClient.invalidateQueries({ queryKey: ['groups', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Failed'),
+  });
+
+  const emailOk = isValidEmail(form.email);
+  const dup = existing.some((m) => m.email.toLowerCase() === form.email.trim().toLowerCase());
+
+  return (
+    <details className="card" style={{ padding: 0 }}>
+      <summary
+        style={{
+          cursor: 'pointer',
+          padding: '9px 12px',
+          fontSize: 12.5,
+          fontWeight: 500,
+          listStyle: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+        }}
+      >
+        <I.plus size={12} /> Add a single target
+      </summary>
+      <div style={{ padding: 12, paddingTop: 0, display: 'grid', gap: 8 }}>
+        <div className="grid-2" style={{ gap: 8 }}>
+          <input
+            className="input"
+            placeholder="email@company.com *"
+            value={form.email}
+            type="email"
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
+          <div className="grid-2" style={{ gap: 8 }}>
+            <input
+              className="input"
+              placeholder="First name"
+              value={form.firstName}
+              onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+            />
+            <input
+              className="input"
+              placeholder="Last name"
+              value={form.lastName}
+              onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+            />
+          </div>
+        </div>
+        <div className="grid-2" style={{ gap: 8 }}>
+          <input
+            className="input"
+            placeholder="Department"
+            value={form.department}
+            onChange={(e) => setForm({ ...form, department: e.target.value })}
+          />
+          <input
+            className="input"
+            placeholder="Position"
+            value={form.position}
+            onChange={(e) => setForm({ ...form, position: e.target.value })}
+          />
+        </div>
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 11.5, color: dup ? 'var(--warn)' : 'var(--fg-subtle)' }}>
+            {form.email && !emailOk
+              ? 'Enter a valid email'
+              : dup
+                ? 'Already in this group'
+                : ''}
+          </span>
+          <button
+            type="button"
+            className="btn primary sm"
+            disabled={!emailOk || dup || add.isPending}
+            onClick={() => add.mutate()}
+          >
+            {add.isPending ? 'Adding…' : 'Add target'}
+          </button>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+function GroupForm({
+  onDone,
+  onCreated,
+}: {
+  onDone: () => void;
+  onCreated: (id: string) => void;
+}): JSX.Element {
   const queryClient = useQueryClient();
   const [form, setForm] = useState({ name: '', description: '' });
 
   const create = useMutation({
     mutationFn: createGroup,
-    onSuccess: () => {
+    onSuccess: (g) => {
       queryClient.invalidateQueries({ queryKey: ['groups'] });
-      toast.success('Group created');
-      onDone();
+      toast.success('Group created — now add some targets');
+      onCreated(g.id);
     },
     onError: (e: any) => toast.error(e?.response?.data?.message || 'Create failed'),
   });
@@ -282,6 +437,7 @@ function GroupForm({ onDone }: { onDone: () => void }): JSX.Element {
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="Finance team"
+            autoFocus
           />
         </div>
         <div>
@@ -290,17 +446,18 @@ function GroupForm({ onDone }: { onDone: () => void }): JSX.Element {
             className="input"
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
+            placeholder="Optional — who's in this group / what it's for"
           />
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <button
             type="button"
             className="btn primary"
-            disabled={create.isPending}
+            disabled={create.isPending || !form.name.trim()}
             onClick={() =>
               create.mutate({
-                name: form.name,
-                description: form.description || undefined,
+                name: form.name.trim(),
+                description: form.description.trim() || undefined,
               })
             }
           >

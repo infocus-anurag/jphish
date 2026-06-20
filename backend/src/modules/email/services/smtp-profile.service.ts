@@ -109,6 +109,27 @@ export class SmtpProfileService {
     });
   }
 
+  /**
+   * Verify raw SMTP credentials WITHOUT persisting a profile — powers the
+   * "Test connection" button in the create form so operators can validate
+   * settings before saving. Throws BadRequestException (→ 400) on failure.
+   */
+  async testConnection(dto: CreateSmtpProfileDto): Promise<{ success: true }> {
+    const transient = {
+      id: 'transient-test',
+      name: dto.name || 'test',
+      host: dto.host,
+      port: dto.port,
+      secure: dto.secure,
+      user: dto.user,
+      password: dto.password,
+      fromEmail: dto.fromEmail,
+      fromName: dto.fromName ?? null,
+    } as SmtpProfile;
+    await this.emailService.testSmtpConnection(transient);
+    return { success: true };
+  }
+
   async test(id: string, dto: TestSmtpProfileDto, user: User, ctx: AuditContext): Promise<SmtpProfile> {
     const profile = await this.profiles.findOne({ where: { id } });
     if (!profile) {
@@ -117,6 +138,17 @@ export class SmtpProfileService {
 
     try {
       await this.emailService.testSmtpConnection(profile);
+      // Also send a real test email so the operator sees deliverability end-to-end.
+      await this.emailService.sendEmail(
+        dto.testEmail,
+        '[TEST] PhishGuard sending profile',
+        `<div style="font-family:Arial,sans-serif;font-size:14px">
+           <p>This is a test email from your PhishGuard sending profile <strong>${profile.name}</strong>.</p>
+           <p>If you received this, the profile can send mail.</p>
+         </div>`,
+        `Test email from PhishGuard sending profile "${profile.name}". If you received this, the profile can send mail.`,
+        profile,
+      );
       profile.testSuccessful = true;
       profile.testError = null;
       profile.lastTestedAt = new Date();
@@ -137,6 +169,19 @@ export class SmtpProfileService {
     });
 
     return this.sanitize(updated);
+  }
+
+  /**
+   * Return the raw profile *including* the password — for internal senders
+   * (campaign worker, template test-send) that actually need to authenticate.
+   * Never expose this over the API; use findById() for that.
+   */
+  async getEntity(id: string): Promise<SmtpProfile> {
+    const profile = await this.profiles.findOne({ where: { id } });
+    if (!profile) {
+      throw new NotFoundException('SMTP profile not found');
+    }
+    return profile;
   }
 
   private sanitize(profile: SmtpProfile): SmtpProfile {

@@ -1675,3 +1675,142 @@ textarea.input {
     transform: rotate(360deg);
   }
 }
+
+/* ── File drop zone ─────────────────────────────────────────────────────── */
+.filedrop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 26px 18px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+.filedrop:hover,
+.filedrop:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+.filedrop.dragging {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.filedrop-icon {
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+.filedrop-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+.filedrop-hint {
+  font-size: 11.5px;
+  color: var(--fg-subtle);
+}
+
+/* ── Horizontal stepper ─────────────────────────────────────────────────── */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.stepper-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.stepper-step:last-child {
+  flex: 0 0 auto;
+}
+.stepper-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+  background: var(--bg-elev);
+  color: var(--fg-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  flex: 0 0 auto;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.stepper-step.active .stepper-dot {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+.stepper-step.done .stepper-dot {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-soft-fg);
+  cursor: pointer;
+}
+.stepper-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stepper-step.active .stepper-label,
+.stepper-step.done .stepper-label {
+  color: var(--fg);
+}
+.stepper-line {
+  flex: 1;
+  height: 1.5px;
+  background: var(--line);
+  margin: 0 8px;
+  min-width: 16px;
+}
+.stepper-step.done .stepper-line {
+  background: var(--accent-line);
+}
+
+/* ── Import summary chips ────────────────────────────────────────────────── */
+.import-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.import-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  min-width: 78px;
+}
+.import-stat .num {
+  font-size: 17px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.import-stat .lbl {
+  font-size: 10.5px;
+  color: var(--fg-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.import-stat.ok .num {
+  color: var(--ok);
+}
+.import-stat.bad .num {
+  color: var(--danger);
+}
+.import-stat.warn .num {
+  color: var(--warn);
+}

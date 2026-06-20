@@ -35,6 +35,12 @@ export class SmtpProfilesController {
     return this.smtpProfileService.create(dto, req.user, ctx);
   }
 
+  @Post('test-connection')
+  @HttpCode(HttpStatus.OK)
+  async testConnection(@Body() dto: CreateSmtpProfileDto) {
+    return this.smtpProfileService.testConnection(dto);
+  }
+
   @Get()
   async findAll(
     @Query('skip') skip: string = '0',

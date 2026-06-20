@@ -43,6 +43,22 @@ Domains/Security/Billing/API, NotifPanel): no backend exists, so they show an ho
 do **not** fabricate data and do **not** hide the nav entry. To wire one later, replace its `EmptyState`
 with the standard query pattern below.
 
+**Campaign-flow UX (2026-06 pass):** the setup screens are richer than the bare table pattern —
+- **Groups** (`GroupsScreen`): `ImportTargetsModal` (3-step file/paste → column-map → validate/dedupe
+  preview, all 5 target fields, template download) + single quick-add. Logic in `lib/targets-import.ts`.
+- **Templates** (`TemplatesScreen`): unified `TemplateEditor` modal — preset gallery, live `MailPreview`,
+  variable picker, edit/duplicate, test-send. Helpers + presets in `lib/template-utils.ts`. Template
+  `type` is `phishing|transactional|training` (matches backend; "transactional" shown as "Notification").
+- **Landing** (`LandingScreen`): `LandingEditor` — clone-from-URL / preset / blank source chooser,
+  **sandboxed iframe** live preview, edit/duplicate. Helpers in `lib/landing-utils.ts`.
+- **Settings → SMTP**: provider presets, test-before-save, `TestProfileModal` (real test email).
+- **Wizard** (`WizardScreen`): template preview, recipient preview from the group, review-step
+  test-send, launch callout that blocks on 0 recipients.
+- **Reports** (`ReportsScreen`): auto-refresh toggle (`refetchInterval`), event-type filter chips,
+  CSV export (`toCsv`/`downloadTextFile` from `lib/targets-import.ts`).
+- **Reusable primitives:** `ui/FileDrop.tsx` (dropzone) and `ui/Stepper.tsx` (horizontal stepper).
+- New tests live in `frontend/test/*.test.ts` (targets-import, template-utils, landing-utils, to-csv).
+
 ## Component structure (`frontend/src/components/`)
 
 - **`shell/`** — app chrome: `AppShell`, `Sidebar` (RBAC-filtered nav, dynamic `['campaigns']` badge),

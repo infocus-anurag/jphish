@@ -43,6 +43,12 @@ export class CreateLandingPageDto {
   redirectUrl?: string;
 }
 
+export class CloneLandingPageDto {
+  @ApiProperty({ example: 'https://login.example.com', description: 'Public URL to clone' })
+  @IsUrl({ require_protocol: true, protocols: ['http', 'https'] })
+  url: string;
+}
+
 export class UpdateLandingPageDto {
   @ApiProperty({ required: false })
   @IsOptional()

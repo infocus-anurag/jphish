@@ -1,6 +1,8 @@
 import apiClient from '@/lib/api-client';
 
-export type EmailTemplateType = 'phishing' | 'training' | 'announcement';
+// Mirrors the backend enum (`email-template-type.enum.ts`). 'transactional' is
+// surfaced in the UI as "Notification".
+export type EmailTemplateType = 'phishing' | 'transactional' | 'training';
 
 export interface EmailTemplate {
   id: string;
@@ -65,5 +67,19 @@ export async function previewEmailTemplate(
   variables: Record<string, string>,
 ): Promise<{ subject: string; html: string; text: string | null }> {
   const { data } = await apiClient.post(`/email-templates/${id}/preview`, { variables });
+  return data;
+}
+
+export interface TestEmailTemplateInput {
+  testEmail: string;
+  smtpProfileId: string;
+  variables?: Record<string, string>;
+}
+
+export async function testEmailTemplate(
+  id: string,
+  input: TestEmailTemplateInput,
+): Promise<{ messageId: string; previewUrl?: string }> {
+  const { data } = await apiClient.post(`/email-templates/${id}/test`, input);
   return data;
 }

@@ -6,10 +6,11 @@ import { toast } from 'sonner';
 import { I } from '@/components/ui/Icons';
 import { Badge } from '@/components/ui/Primitives';
 import { createCampaign, launchCampaign } from '@/lib/api/campaigns';
-import { listEmailTemplates } from '@/lib/api/templates';
+import { listEmailTemplates, testEmailTemplate } from '@/lib/api/templates';
 import { listSmtpProfiles } from '@/lib/api/smtp-profiles';
 import { listLandingPages } from '@/lib/api/landing-pages';
-import { listGroups } from '@/lib/api/groups';
+import { listGroups, getGroup } from '@/lib/api/groups';
+import { renderWithVars, SAMPLE_VARS } from '@/lib/template-utils';
 
 interface WizardData {
   name: string;
@@ -56,6 +57,15 @@ export function WizardScreen({
   const profiles = useQuery({ queryKey: ['smtp-profiles'], queryFn: listSmtpProfiles });
   const landings = useQuery({ queryKey: ['landing-pages'], queryFn: listLandingPages });
   const groups = useQuery({ queryKey: ['groups'], queryFn: listGroups });
+  const groupDetail = useQuery({
+    queryKey: ['groups', data.groupId],
+    queryFn: () => getGroup(data.groupId),
+    enabled: !!data.groupId,
+  });
+
+  const selectedTemplate = templates.data?.[0]?.find((t) => t.id === data.templateId);
+  const selectedProfile = profiles.data?.[0]?.find((p) => p.id === data.smtpProfileId);
+  const recipientCount = groupDetail.data?.members.length ?? 0;
 
   const create = useMutation({
     mutationFn: () =>
@@ -82,7 +92,7 @@ export function WizardScreen({
       const campaign = await create.mutateAsync();
       if (launchNow) {
         await launch.mutateAsync(campaign.id);
-        toast.success(`Launched "${campaign.name}"`);
+        toast.success(`Launched "${campaign.name}" to ${recipientCount} recipient(s)`);
       } else {
         toast.success(`Saved draft "${campaign.name}"`);
       }
@@ -105,12 +115,7 @@ export function WizardScreen({
     <div className="modal-bg" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div
         className="modal lg"
-        style={{
-          width: 'min(960px, 96vw)',
-          maxHeight: '94vh',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
+        style={{ width: 'min(960px, 96vw)', maxHeight: '94vh', display: 'flex', flexDirection: 'column' }}
       >
         <div className="modal-head">
           <div className="modal-title">New campaign</div>
@@ -118,12 +123,7 @@ export function WizardScreen({
           <span style={{ fontSize: 11, color: 'var(--fg-subtle)' }}>
             Step {step + 1} of {STEPS.length}
           </span>
-          <button
-            type="button"
-            className="topbar-action"
-            onClick={onClose}
-            aria-label="Close"
-          >
+          <button type="button" className="topbar-action" onClick={onClose} aria-label="Close">
             <I.x size={14} />
           </button>
         </div>
@@ -136,9 +136,7 @@ export function WizardScreen({
                 className={`wizard-step ${i < step ? 'done' : ''} ${i === step ? 'active' : ''}`}
                 onClick={() => i <= step && setStep(i)}
               >
-                <div className="wizard-step-num">
-                  {i < step ? <I.check size={11} /> : i + 1}
-                </div>
+                <div className="wizard-step-num">{i < step ? <I.check size={11} /> : i + 1}</div>
                 <div className="wizard-step-label">{label}</div>
               </div>
             ))}
@@ -153,6 +151,7 @@ export function WizardScreen({
                     value={data.name}
                     onChange={(e) => update('name', e.target.value)}
                     placeholder="Q2 Finance team — invoice pretext"
+                    autoFocus
                   />
                 </Field>
                 <Field label="Description">
@@ -206,6 +205,33 @@ export function WizardScreen({
                     </div>
                   )}
                 </Field>
+
+                {selectedTemplate && (
+                  <div>
+                    <label className="field-label">Preview</label>
+                    <div className="mail-preview">
+                      <div className="mail-head">
+                        <div className="mail-head-row">
+                          <strong>From:</strong>{' '}
+                          {selectedProfile
+                            ? `${selectedProfile.fromName || selectedProfile.fromEmail} <${selectedProfile.fromEmail}>`
+                            : '(select a sending profile)'}
+                        </div>
+                        <div className="mail-head-row">
+                          <strong>Subject:</strong>{' '}
+                          {renderWithVars(selectedTemplate.subject, SAMPLE_VARS) || '(no subject)'}
+                        </div>
+                      </div>
+                      <div
+                        className="mail-body"
+                        style={{ maxHeight: 220, overflow: 'auto' }}
+                        dangerouslySetInnerHTML={{
+                          __html: renderWithVars(selectedTemplate.htmlContent, SAMPLE_VARS),
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
               </Section>
             )}
 
@@ -225,9 +251,8 @@ export function WizardScreen({
                     ))}
                   </select>
                   <div className="field-help">
-                    When set, every link in the email is rewritten to your
-                    landing page so opens, clicks and form submissions
-                    attribute back to the recipient.
+                    When set, every link in the email is rewritten to your landing page so opens,
+                    clicks and form submissions attribute back to the recipient.
                   </div>
                 </Field>
               </Section>
@@ -254,6 +279,43 @@ export function WizardScreen({
                     </div>
                   )}
                 </Field>
+
+                {data.groupId && (
+                  <div>
+                    <div className="row" style={{ justifyContent: 'space-between', marginBottom: 6 }}>
+                      <label className="field-label" style={{ margin: 0 }}>
+                        Recipients ({recipientCount})
+                      </label>
+                      {recipientCount === 0 && !groupDetail.isLoading && (
+                        <Badge tone="warn">This group is empty</Badge>
+                      )}
+                    </div>
+                    <div className="card" style={{ padding: 0, maxHeight: 220, overflow: 'auto' }}>
+                      <table className="table">
+                        <tbody>
+                          {groupDetail.isLoading && (
+                            <tr>
+                              <td style={{ color: 'var(--fg-subtle)' }}>Loading recipients…</td>
+                            </tr>
+                          )}
+                          {groupDetail.data?.members.slice(0, 50).map((m) => (
+                            <tr key={m.email}>
+                              <td className="mono" style={{ fontSize: 11.5 }}>
+                                {m.email}
+                              </td>
+                              <td>{[m.firstName, m.lastName].filter(Boolean).join(' ') || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {recipientCount > 50 && (
+                      <div style={{ fontSize: 11.5, color: 'var(--fg-subtle)', marginTop: 4 }}>
+                        Showing first 50 of {recipientCount}.
+                      </div>
+                    )}
+                  </div>
+                )}
               </Section>
             )}
 
@@ -279,47 +341,57 @@ export function WizardScreen({
             )}
 
             {step === 5 && (
-              <Section title="Review">
+              <Section title="Review & launch">
                 <ReviewRow label="Name" value={data.name} />
-                <ReviewRow
-                  label="Template"
-                  value={
-                    templates.data?.[0]?.find((t) => t.id === data.templateId)?.name ?? '—'
-                  }
-                />
+                <ReviewRow label="Template" value={selectedTemplate?.name ?? '—'} />
                 <ReviewRow
                   label="Sending profile"
-                  value={
-                    profiles.data?.[0]?.find((p) => p.id === data.smtpProfileId)?.name ?? '—'
-                  }
+                  value={selectedProfile ? `${selectedProfile.name} · ${selectedProfile.fromEmail}` : '—'}
                 />
                 <ReviewRow
                   label="Landing page"
-                  value={
-                    landings.data?.items.find((p) => p.id === data.landingPageId)?.name ?? '—'
-                  }
+                  value={landings.data?.items.find((p) => p.id === data.landingPageId)?.name ?? 'None'}
                 />
                 <ReviewRow
-                  label="Group"
-                  value={
-                    groups.data?.groups.find((g) => g.id === data.groupId)?.name ?? '—'
-                  }
+                  label="Audience"
+                  value={`${groups.data?.groups.find((g) => g.id === data.groupId)?.name ?? '—'} · ${recipientCount} recipient(s)`}
                 />
-                <ReviewRow label="Start" value={data.startDate} />
-                <ReviewRow label="End" value={data.endDate || '—'} />
+                <ReviewRow label="Start" value={new Date(data.startDate).toLocaleString()} />
+                <ReviewRow label="End" value={data.endDate ? new Date(data.endDate).toLocaleString() : '—'} />
+
+                {data.templateId && data.smtpProfileId && (
+                  <TestSendInline templateId={data.templateId} smtpProfileId={data.smtpProfileId} />
+                )}
+
+                <div
+                  className="card"
+                  style={{
+                    padding: 12,
+                    marginTop: 6,
+                    display: 'flex',
+                    gap: 8,
+                    alignItems: 'center',
+                    background: recipientCount === 0 ? 'var(--danger-soft)' : 'var(--accent-soft)',
+                  }}
+                >
+                  <I.send size={15} />
+                  <div style={{ fontSize: 12.5 }}>
+                    {recipientCount === 0 ? (
+                      <>This campaign has <strong>no recipients</strong>. Add members to the group before launching.</>
+                    ) : (
+                      <>
+                        Launching will send the email to <strong>{recipientCount}</strong> recipient
+                        {recipientCount === 1 ? '' : 's'} immediately.
+                      </>
+                    )}
+                  </div>
+                </div>
               </Section>
             )}
           </div>
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            gap: 8,
-            padding: '12px 22px',
-            borderTop: '1px solid var(--line)',
-          }}
-        >
+        <div style={{ display: 'flex', gap: 8, padding: '12px 22px', borderTop: '1px solid var(--line)' }}>
           {step > 0 && (
             <button type="button" className="btn ghost" onClick={() => setStep(step - 1)}>
               Back
@@ -327,37 +399,67 @@ export function WizardScreen({
           )}
           <span className="spacer" />
           {step < STEPS.length - 1 && (
-            <button
-              type="button"
-              className="btn primary"
-              disabled={!canAdvance}
-              onClick={() => setStep(step + 1)}
-            >
+            <button type="button" className="btn primary" disabled={!canAdvance} onClick={() => setStep(step + 1)}>
               Next
             </button>
           )}
           {step === STEPS.length - 1 && (
             <>
-              <button
-                type="button"
-                className="btn"
-                disabled={create.isPending}
-                onClick={() => handleCreateAndLaunch(false)}
-              >
+              <button type="button" className="btn" disabled={create.isPending} onClick={() => handleCreateAndLaunch(false)}>
                 Save as draft
               </button>
               <button
                 type="button"
                 className="btn primary"
-                disabled={create.isPending || launch.isPending}
+                disabled={create.isPending || launch.isPending || recipientCount === 0}
                 onClick={() => handleCreateAndLaunch(true)}
               >
                 <I.send size={12} />{' '}
-                {create.isPending || launch.isPending ? 'Working…' : 'Create & launch'}
+                {create.isPending || launch.isPending ? 'Working…' : `Launch to ${recipientCount}`}
               </button>
             </>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function TestSendInline({
+  templateId,
+  smtpProfileId,
+}: {
+  templateId: string;
+  smtpProfileId: string;
+}): JSX.Element {
+  const [email, setEmail] = useState('');
+  const send = useMutation({
+    mutationFn: () => testEmailTemplate(templateId, { testEmail: email.trim(), smtpProfileId }),
+    onSuccess: () => toast.success('Test email sent'),
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Test send failed'),
+  });
+  return (
+    <div className="card" style={{ padding: 12, marginTop: 6, display: 'grid', gap: 6, background: 'var(--bg-sunken)' }}>
+      <div className="field-label" style={{ margin: 0 }}>
+        Send yourself a test first (recommended)
+      </div>
+      <div className="row" style={{ gap: 6 }}>
+        <input
+          className="input"
+          style={{ flex: 1 }}
+          type="email"
+          placeholder="you@company.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <button
+          type="button"
+          className="btn"
+          disabled={!email.includes('@') || send.isPending}
+          onClick={() => send.mutate()}
+        >
+          {send.isPending ? 'Sending…' : 'Send test'}
+        </button>
       </div>
     </div>
   );
@@ -404,8 +506,8 @@ export function AIGenerator(): JSX.Element {
     <div style={{ padding: 24, color: 'var(--fg-subtle)' }}>
       <Badge tone="info">Coming soon</Badge>
       <p style={{ marginTop: 10, fontSize: 13 }}>
-        AI template generation is not wired to a model yet — create templates
-        manually from the Templates screen for now.
+        AI template generation is not wired to a model yet — create templates manually from the
+        Templates screen for now.
       </p>
     </div>
   );

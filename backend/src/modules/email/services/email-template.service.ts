@@ -9,16 +9,20 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { EmailTemplate } from '../entities/email-template.entity';
-import { CreateEmailTemplateDto, UpdateEmailTemplateDto } from '../dto';
+import { CreateEmailTemplateDto, UpdateEmailTemplateDto, TestEmailTemplateDto } from '../dto';
 import { User } from '@/modules/auth/entities/user.entity';
 import { UserRole } from '@/modules/auth/enums/user-role.enum';
 import { AuditService, AuditContext } from '@/modules/auth/services/audit.service';
+import { EmailService } from './email.service';
+import { SmtpProfileService } from './smtp-profile.service';
 
 @Injectable()
 export class EmailTemplateService {
   constructor(
     @InjectRepository(EmailTemplate) private templates: Repository<EmailTemplate>,
     private audit: AuditService,
+    private emailService: EmailService,
+    private smtpProfiles: SmtpProfileService,
   ) {}
 
   async create(
@@ -140,6 +144,50 @@ export class EmailTemplateService {
     }
 
     return { subject, html, text };
+  }
+
+  /**
+   * Render the template with sample/preview data and send a one-off test email
+   * through the chosen SMTP profile. Unlike a real campaign send, no tracking
+   * pixel/link rewriting is applied — this is purely to preview deliverability
+   * and rendering. The subject is prefixed with [TEST] so it can't be mistaken
+   * for a live phishing simulation.
+   */
+  async sendTest(
+    id: string,
+    dto: TestEmailTemplateDto,
+    user: User,
+    ctx: AuditContext,
+  ): Promise<{ messageId: string; previewUrl?: string }> {
+    const template = await this.findById(id);
+    const profile = await this.smtpProfiles.getEntity(dto.smtpProfileId);
+
+    // Fill in friendly defaults so unmapped tokens don't render as raw {{…}}.
+    const variables: Record<string, string> = {
+      firstName: 'Alex',
+      lastName: 'Taylor',
+      email: dto.testEmail,
+      ...(dto.variables ?? {}),
+    };
+
+    const rendered = this.renderTemplate(template, variables);
+    const result = await this.emailService.sendEmail(
+      dto.testEmail,
+      `[TEST] ${rendered.subject}`,
+      rendered.html,
+      rendered.text,
+      profile,
+    );
+
+    await this.audit.record({
+      action: 'email_template.tested',
+      actorId: user.id,
+      targetId: id,
+      ctx,
+      metadata: { testEmail: dto.testEmail, smtpProfileId: dto.smtpProfileId },
+    });
+
+    return { messageId: result.messageId, previewUrl: result.previewUrl };
   }
 
   validateVariables(template: EmailTemplate, variables: Record<string, string>): void {

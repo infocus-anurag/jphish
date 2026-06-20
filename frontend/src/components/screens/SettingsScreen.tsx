@@ -4,19 +4,38 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { I, type IconKey } from '@/components/ui/Icons';
-import { Badge, Switch } from '@/components/ui/Primitives';
+import { Badge, Switch, Modal } from '@/components/ui/Primitives';
 import { EmptyState, ErrorState, SkeletonRows } from '@/components/ui/States';
 import { PageHeader } from '@/components/shell/PageHeader';
 import { useCan } from '@/lib/rbac';
+import { useAuthStore } from '@/store/auth.store';
 import {
   createSmtpProfile,
   deleteSmtpProfile,
   listSmtpProfiles,
   testSmtpProfile,
+  testSmtpConnection,
   type CreateSmtpProfileInput,
   type SmtpProfile,
 } from '@/lib/api/smtp-profiles';
 import { listAuditLogs } from '@/lib/api/audit';
+
+interface SmtpPreset {
+  id: string;
+  label: string;
+  host: string;
+  port: number;
+  secure: boolean;
+}
+
+// Common provider presets to prefill host/port/TLS and remove guesswork.
+const SMTP_PRESETS: SmtpPreset[] = [
+  { id: 'gmail', label: 'Gmail / Google Workspace', host: 'smtp.gmail.com', port: 587, secure: false },
+  { id: 'o365', label: 'Microsoft 365', host: 'smtp.office365.com', port: 587, secure: false },
+  { id: 'mailgun', label: 'Mailgun (SMTP)', host: 'smtp.mailgun.org', port: 587, secure: false },
+  { id: 'sendgrid', label: 'SendGrid', host: 'smtp.sendgrid.net', port: 587, secure: false },
+  { id: 'ses', label: 'Amazon SES', host: 'email-smtp.us-east-1.amazonaws.com', port: 465, secure: true },
+];
 
 type SectionId =
   | 'smtp'
@@ -94,6 +113,7 @@ function SmtpSettings(): JSX.Element {
   const canEdit = useCan('settings.edit');
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [testProfile, setTestProfile] = useState<SmtpProfile | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['smtp-profiles'],
@@ -110,19 +130,13 @@ function SmtpSettings(): JSX.Element {
     onError: (e: any) => toast.error(e?.response?.data?.message || 'Failed'),
   });
 
-  const testMutation = useMutation({
-    mutationFn: (id: string) => testSmtpProfile(id, 'test@example.com'),
-    onSuccess: (p) => {
-      queryClient.invalidateQueries({ queryKey: ['smtp-profiles'] });
-      if (p.testSuccessful) toast.success('SMTP connection successful');
-      else toast.error(p.testError || 'SMTP test failed');
-    },
-    onError: (e: any) => toast.error(e?.response?.data?.message || 'Test failed'),
-  });
-
   return (
     <div style={{ display: 'grid', gap: 14, maxWidth: 760 }}>
       <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Sending profiles</h2>
+      <p style={{ marginTop: -8, color: 'var(--fg-muted)', fontSize: 12.5 }}>
+        The SMTP servers your campaigns send from. Add one, send yourself a test, then pick it in the
+        campaign wizard.
+      </p>
       {error && (
         <Badge tone="danger">Could not load profiles ({(error as Error).message})</Badge>
       )}
@@ -148,8 +162,13 @@ function SmtpSettings(): JSX.Element {
             )}
             {!isLoading && profiles.length === 0 && (
               <tr>
-                <td colSpan={6} style={{ color: 'var(--fg-subtle)' }}>
-                  No sending profiles yet. Add one to start sending campaigns.
+                <td colSpan={6}>
+                  <EmptyState
+                    compact
+                    icon="send"
+                    title="No sending profiles yet"
+                    message="Add an SMTP profile to start sending campaigns. You can test it before saving."
+                  />
                 </td>
               </tr>
             )}
@@ -184,10 +203,9 @@ function SmtpSettings(): JSX.Element {
                   <button
                     type="button"
                     className="btn ghost sm"
-                    onClick={() => testMutation.mutate(p.id)}
-                    disabled={testMutation.isPending}
+                    onClick={() => setTestProfile(p)}
                   >
-                    Test
+                    <I.send size={11} /> Test
                   </button>
                   {canEdit && (
                     <button
@@ -219,12 +237,75 @@ function SmtpSettings(): JSX.Element {
         </button>
       )}
       {canEdit && showForm && <SmtpProfileForm onDone={() => setShowForm(false)} />}
+      {testProfile && (
+        <TestProfileModal profile={testProfile} onClose={() => setTestProfile(null)} />
+      )}
     </div>
+  );
+}
+
+function TestProfileModal({ profile, onClose }: { profile: SmtpProfile; onClose: () => void }): JSX.Element {
+  const queryClient = useQueryClient();
+  const defaultEmail = useAuthStore((s) => s.user?.email ?? '');
+  const [email, setEmail] = useState(defaultEmail);
+
+  const send = useMutation({
+    mutationFn: () => testSmtpProfile(profile.id, email.trim()),
+    onSuccess: (p) => {
+      queryClient.invalidateQueries({ queryKey: ['smtp-profiles'] });
+      if (p.testSuccessful) {
+        toast.success(`Test email sent to ${email}`);
+        onClose();
+      } else {
+        toast.error(p.testError || 'SMTP test failed');
+      }
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Test failed'),
+  });
+
+  return (
+    <Modal
+      title={`Test "${profile.name}"`}
+      onClose={onClose}
+      footer={
+        <div className="row" style={{ justifyContent: 'flex-end', width: '100%', gap: 6 }}>
+          <button type="button" className="btn ghost" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn primary"
+            disabled={!email.includes('@') || send.isPending}
+            onClick={() => send.mutate()}
+          >
+            {send.isPending ? 'Sending…' : 'Send test email'}
+          </button>
+        </div>
+      }
+    >
+      <div style={{ display: 'grid', gap: 8 }}>
+        <div style={{ fontSize: 12.5, color: 'var(--fg-subtle)' }}>
+          We'll verify the connection and send a real test email so you can confirm deliverability.
+        </div>
+        <div>
+          <label className="field-label">Send test to</label>
+          <input
+            className="input"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@company.com"
+            autoFocus
+          />
+        </div>
+      </div>
+    </Modal>
   );
 }
 
 function SmtpProfileForm({ onDone }: { onDone: () => void }): JSX.Element {
   const queryClient = useQueryClient();
+  const [showPw, setShowPw] = useState(false);
   const [form, setForm] = useState<CreateSmtpProfileInput>({
     name: '',
     host: '',
@@ -246,8 +327,33 @@ function SmtpProfileForm({ onDone }: { onDone: () => void }): JSX.Element {
     onError: (e: any) => toast.error(e?.response?.data?.message || 'Create failed'),
   });
 
+  const test = useMutation({
+    mutationFn: () => testSmtpConnection(form),
+    onSuccess: () => toast.success('Connection successful — credentials work'),
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Connection failed'),
+  });
+
+  const canTest =
+    !!form.host && !!form.port && !!form.user && !!form.password && form.fromEmail.includes('@');
+
+  function applyPreset(id: string): void {
+    const preset = SMTP_PRESETS.find((p) => p.id === id);
+    if (preset) setForm((f) => ({ ...f, host: preset.host, port: preset.port, secure: preset.secure }));
+  }
+
   return (
     <div className="card" style={{ padding: 14 }}>
+      <div style={{ marginBottom: 12 }}>
+        <label className="field-label">Provider preset</label>
+        <select className="input" style={{ maxWidth: 320 }} defaultValue="" onChange={(e) => applyPreset(e.target.value)}>
+          <option value="">Choose a provider to prefill…</option>
+          {SMTP_PRESETS.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+      </div>
       <div style={{ display: 'grid', gap: 10, gridTemplateColumns: '1fr 1fr' }}>
         <Field label="Name">
           <input
@@ -288,30 +394,43 @@ function SmtpProfileForm({ onDone }: { onDone: () => void }): JSX.Element {
             value={form.port}
             onChange={(e) => setForm({ ...form, port: Number(e.target.value) })}
           />
+          <div className="field-help">587 = STARTTLS · 465 = TLS/SSL · 25 = unencrypted</div>
         </Field>
-        <Field label="Secure (TLS)">
-          <Switch
-            on={form.secure}
-            onChange={(v) => setForm({ ...form, secure: v })}
-          />
+        <Field label="Secure (implicit TLS)">
+          <Switch on={form.secure} onChange={(v) => setForm({ ...form, secure: v })} />
+          <div className="field-help">On for port 465, off for 587 (STARTTLS).</div>
         </Field>
         <Field label="Username">
           <input
             className="input mono"
             value={form.user}
             onChange={(e) => setForm({ ...form, user: e.target.value })}
+            autoComplete="off"
           />
         </Field>
         <Field label="Password">
-          <input
-            className="input mono"
-            type="password"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-          />
+          <div style={{ position: 'relative' }}>
+            <input
+              className="input mono"
+              type={showPw ? 'text' : 'password'}
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              autoComplete="new-password"
+              style={{ paddingRight: 30 }}
+            />
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={() => setShowPw((s) => !s)}
+              style={{ position: 'absolute', right: 2, top: 2, padding: '0 6px' }}
+              aria-label={showPw ? 'Hide password' : 'Show password'}
+            >
+              <I.eye size={12} />
+            </button>
+          </div>
         </Field>
       </div>
-      <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+      <div style={{ display: 'flex', gap: 6, marginTop: 12, alignItems: 'center' }}>
         <button
           type="button"
           className="btn primary"
@@ -319,6 +438,15 @@ function SmtpProfileForm({ onDone }: { onDone: () => void }): JSX.Element {
           onClick={() => create.mutate(form)}
         >
           {create.isPending ? 'Saving…' : 'Save profile'}
+        </button>
+        <button
+          type="button"
+          className="btn"
+          disabled={!canTest || test.isPending}
+          onClick={() => test.mutate()}
+          title={canTest ? 'Verify these credentials without saving' : 'Fill host, port, credentials and from-email first'}
+        >
+          {test.isPending ? 'Testing…' : 'Test connection'}
         </button>
         <button type="button" className="btn ghost" onClick={onDone}>
           Cancel

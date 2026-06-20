@@ -60,11 +60,16 @@ export async function deleteGroup(id: string): Promise<void> {
   await apiClient.delete(`/groups/${id}`);
 }
 
+export interface AddMembersResult {
+  added: number;
+  skipped: number;
+}
+
 export async function addGroupMembers(
   id: string,
   members: Array<Omit<GroupMember, 'groupId' | 'addedAt'>>,
-): Promise<{ added: number }> {
-  const { data } = await apiClient.post<{ added: number }>(`/groups/${id}/members`, { members });
+): Promise<AddMembersResult> {
+  const { data } = await apiClient.post<AddMembersResult>(`/groups/${id}/members`, { members });
   return data;
 }
 

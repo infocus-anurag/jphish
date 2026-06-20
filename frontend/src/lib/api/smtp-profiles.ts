@@ -63,3 +63,11 @@ export async function testSmtpProfile(id: string, testEmail: string): Promise<Sm
   const { data } = await apiClient.post<SmtpProfile>(`/smtp-profiles/${id}/test`, { testEmail });
   return data;
 }
+
+/** Verify raw credentials without saving a profile (test-before-save). */
+export async function testSmtpConnection(
+  input: CreateSmtpProfileInput,
+): Promise<{ success: boolean }> {
+  const { data } = await apiClient.post<{ success: boolean }>('/smtp-profiles/test-connection', input);
+  return data;
+}

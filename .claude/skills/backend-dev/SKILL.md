@@ -54,6 +54,19 @@ module wiring — confirm in `auth.module.ts` when touching security.
 | Reports | `modules/reports` | `/reports` | ✅ | Dashboard + per-campaign analytics |
 | Phish-server | `phish-server` | `/t/*`, `/p/*` | ✅ (2nd app) | Public tracking + landing render, separate app booted on `PHISH_PORT` |
 
+**2026-06 UX-pass endpoints (campaign setup flow):**
+- `POST /email-templates/:id/test` — `EmailTemplateService.sendTest()` renders the template with sample
+  vars and sends a real `[TEST]` email via a chosen `smtpProfileId` (no tracking pixel). Body:
+  `{ testEmail, smtpProfileId, variables? }`. `EmailTemplateService` now injects `EmailService` +
+  `SmtpProfileService` (`getEntity()` returns the *raw* profile incl. password for internal senders).
+- `POST /smtp-profiles/test-connection` — verify raw creds without persisting (`testConnection(dto)`);
+  the existing `POST /smtp-profiles/:id/test` now also sends a real test email to `testEmail`.
+- `POST /landing-pages/clone` — `LandingCloneService.clone(url)` fetches a public page server-side and
+  returns `{ html, title, sourceUrl }` with scripts/handlers stripped and asset URLs absolutized.
+  **SSRF-hardened**: http/https only, manual redirect re-validation, private/reserved IP blocklist,
+  3 MB / 10 s caps. Uses **cheerio**. Forms left intact (phish-server rewrites their action at serve).
+- `POST /groups/:id/members` now returns `{ added, skipped }` and dedupes within the batch.
+
 ### Auth module (the wired, security-critical one)
 [backend/src/modules/auth/](../../../backend/src/modules/auth/) — `AuthService`, `UsersService`,
 `TokensService`, `AuditService`, plus a bootstrap that seeds a super-admin on first start from

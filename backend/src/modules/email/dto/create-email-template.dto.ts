@@ -1,4 +1,14 @@
-import { IsString, IsEnum, IsArray, MinLength, MaxLength, IsOptional, ValidateIf } from 'class-validator';
+import {
+  IsString,
+  IsEnum,
+  IsArray,
+  MinLength,
+  MaxLength,
+  IsOptional,
+  IsEmail,
+  IsUUID,
+  IsObject,
+} from 'class-validator';
 import { EmailTemplateType } from '../enums/email-template-type.enum';
 
 export class CreateEmailTemplateDto {
@@ -74,7 +84,19 @@ export class UpdateEmailTemplateDto {
 }
 
 export class PreviewEmailTemplateDto {
-  @IsArray()
+  @IsObject()
+  @IsOptional()
+  variables?: Record<string, string>;
+}
+
+export class TestEmailTemplateDto {
+  @IsEmail()
+  testEmail: string;
+
+  @IsUUID()
+  smtpProfileId: string;
+
+  @IsObject()
   @IsOptional()
   variables?: Record<string, string>;
 }

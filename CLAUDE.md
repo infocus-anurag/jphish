@@ -149,7 +149,15 @@ If you change wiring again, **update this file and the relevant skill** so the m
 - **Test it:** backend `cd backend && npm test` (Jest + pg-mem) / `npm run test:e2e`. Frontend
   `cd frontend && npm test` (Vitest + MSW). Coverage gate 80% lines / 70% branches both sides.
 - **Tech:** Next 14 · React 18 · React Query 5 · Zustand 4 · Tailwind 3.4 · axios — vs — NestJS 10 ·
-  TypeORM 0.3 · Postgres 15 · Bull 4 · Redis 7 · nodemailer · bcrypt · passport-jwt · class-validator.
+  TypeORM 0.3 · Postgres 15 · Bull 4 · Redis 7 · nodemailer · bcrypt · passport-jwt · class-validator ·
+  **cheerio** (server-side HTML parsing for the landing-page URL cloner).
+- **Campaign-flow UX (2026-06 pass):** new endpoints — `POST /landing-pages/clone` (SSRF-guarded URL
+  cloner → sanitized HTML), `POST /email-templates/:id/test` (render+send a test email),
+  `POST /smtp-profiles/test-connection` (verify raw creds without saving); `POST /groups/:id/members`
+  now returns `{ added, skipped }`. Frontend helpers: `lib/targets-import.ts` (CSV parse/map/validate +
+  `toCsv`/download), `lib/template-utils.ts`, `lib/landing-utils.ts`; reusable primitives
+  `ui/FileDrop.tsx` + `ui/Stepper.tsx`; bulk target import (`ImportTargetsModal`), template & landing
+  editors with live preview, wizard recipient preview + test-send, reports auto-refresh/filter/CSV.
 - **Mail dev modes** (`MAIL_DEV_MODE` in `backend/.env`): `ethereal` (fake preview inbox), `file`
   (writes `.eml` to `backend/tmp/mail`), empty (real SMTP). Read at boot → restart after changing.
 - **Mail provider** (`MAIL_PROVIDER`): empty = per-profile SMTP (default); `mailgun` = send over
