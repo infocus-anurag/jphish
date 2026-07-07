@@ -23,7 +23,7 @@ describe('<LoginPage />', () => {
     const user = userEvent.setup();
     render(<LoginPage />);
     await user.type(screen.getByPlaceholderText(/you@company/i), 'not-an-email');
-    await user.type(screen.getByPlaceholderText(/••••/), 'whatever');
+    await user.type(screen.getByPlaceholderText(/enter your password/i), 'whatever');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
     expect(await screen.findByText(/valid email/i)).toBeInTheDocument();
     // Should not have hit the API or attempted navigation.
@@ -46,7 +46,7 @@ describe('<LoginPage />', () => {
     const user = userEvent.setup();
     render(<LoginPage />);
     await user.type(screen.getByPlaceholderText(/you@company/i), defaultAdmin.email);
-    await user.type(screen.getByPlaceholderText(/••••/), 'correctpassword');
+    await user.type(screen.getByPlaceholderText(/enter your password/i), 'correctpassword');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
     await waitFor(() => {
       expect(useAuthStore.getState().user?.email).toBe(defaultAdmin.email);
@@ -59,7 +59,7 @@ describe('<LoginPage />', () => {
     const user = userEvent.setup();
     render(<LoginPage />);
     await user.type(screen.getByPlaceholderText(/you@company/i), defaultAdmin.email);
-    await user.type(screen.getByPlaceholderText(/••••/), 'whatever');
+    await user.type(screen.getByPlaceholderText(/enter your password/i), 'whatever');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
     await waitFor(() => {
       expect(mockRouter.replace).toHaveBeenCalledWith('/settings/password');
@@ -74,7 +74,7 @@ describe('<LoginPage />', () => {
     const user = userEvent.setup();
     render(<LoginPage />);
     await user.type(screen.getByPlaceholderText(/you@company/i), defaultAdmin.email);
-    await user.type(screen.getByPlaceholderText(/••••/), 'wrong');
+    await user.type(screen.getByPlaceholderText(/enter your password/i), 'wrong');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Invalid email or password');
@@ -93,18 +93,18 @@ describe('<LoginPage />', () => {
     const user = userEvent.setup();
     render(<LoginPage />);
     await user.type(screen.getByPlaceholderText(/you@company/i), defaultAdmin.email);
-    await user.type(screen.getByPlaceholderText(/••••/), 'wrong');
+    await user.type(screen.getByPlaceholderText(/enter your password/i), 'wrong');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/too many/i));
     });
   });
 
-  it('redirects to `/` if the user is already authenticated when the page mounts', async () => {
+  it('redirects to `/dashboard` if the user is already authenticated when the page mounts', async () => {
     useAuthStore.setState({ user: defaultAdmin, status: 'authenticated' });
     render(<LoginPage />);
     await waitFor(() => {
-      expect(mockRouter.replace).toHaveBeenCalledWith('/');
+      expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard');
     });
   });
 });

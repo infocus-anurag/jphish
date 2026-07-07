@@ -9,6 +9,20 @@ import {
   UserRole,
 } from '@/types/auth.types';
 
+/**
+ * Request a password-reset link. Resolves regardless of whether the address
+ * exists so the UI can show the same neutral confirmation either way (no
+ * account enumeration). NOTE: the backend `POST /auth/forgot-password`
+ * endpoint is not implemented yet — see docs/landing-auth-tenant-plan.md.
+ */
+export async function forgotPassword(email: string): Promise<void> {
+  try {
+    await apiClient.post('/auth/forgot-password', { email });
+  } catch {
+    /* swallow — a 404/500 must not reveal whether the address is registered */
+  }
+}
+
 export async function login(body: LoginRequest): Promise<LoginResponse> {
   const { data } = await apiClient.post<LoginResponse>('/auth/login', body);
   setAccessToken(data.accessToken);

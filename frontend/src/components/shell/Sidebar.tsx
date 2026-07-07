@@ -25,7 +25,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Operate',
     items: [
-      { id: 'dashboard', href: '/', label: 'Dashboard', icon: 'dashboard' },
+      { id: 'dashboard', href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
       {
         id: 'campaigns',
         href: '/campaigns',
@@ -117,8 +117,12 @@ export function Sidebar(): JSX.Element {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <div className="sidebar-brand-name">JPhish</div>
-        <div className="sidebar-brand-meta">v1.2</div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/info-logo.png"
+          alt="Infocus-IT"
+          style={{ height: 28, width: 'auto', background: '#fff', padding: '4px 7px', borderRadius: 6 }}
+        />
       </div>
       <nav className="sidebar-nav">
         {groups.map((g) => {

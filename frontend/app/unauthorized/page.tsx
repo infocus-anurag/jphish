@@ -45,7 +45,7 @@ export default function UnauthorizedPage(): JSX.Element {
           sidebar tweaks panel, or ask an Org Admin for the right permissions.
         </p>
         <Link
-          href="/"
+          href="/dashboard"
           className="btn primary"
           style={{ marginTop: 18, display: 'inline-flex' }}
         >

@@ -7,6 +7,12 @@ import { bootstrapSession } from '@/lib/auth-api';
 import { useAuthStore } from '@/store/auth.store';
 
 /**
+ * Public routes that must remain reachable while signed out. Everything else
+ * (the /dashboard app surface) is gated and bounces to /login.
+ */
+const PUBLIC_PATHS = new Set(['/', '/login', '/forgot-password', '/reset-password']);
+
+/**
  * On mount, attempt a refresh-cookie bootstrap so a returning user lands
  * back in the app without re-typing creds. Also wires the global 401
  * handler so any expired-session 401 from `apiClient` punts the user to /login.
@@ -36,8 +42,9 @@ export function AuthGate({ children }: { children: React.ReactNode }): JSX.Eleme
   }, [setStatus, setUser]);
 
   useEffect(() => {
-    if (status === 'unauthenticated' && pathname !== '/login') {
-      router.replace('/login');
+    if (status === 'unauthenticated' && !PUBLIC_PATHS.has(pathname)) {
+      const next = encodeURIComponent(pathname || '/dashboard');
+      router.replace(`/login?next=${next}`);
     }
   }, [status, pathname, router]);
 

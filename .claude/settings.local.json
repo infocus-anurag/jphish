@@ -19,7 +19,27 @@
       "Bash(docker exec *)",
       "Bash(node -e ' *)",
       "Skill(frontend-dev)",
-      "Skill(frontend-dev:*)"
+      "Skill(frontend-dev:*)",
+      "Bash(gh auth *)",
+      "Bash(git config *)",
+      "Read(//Users/abhinavdas/.ssh/**)",
+      "Bash(ssh-add -l)",
+      "Bash(ssh -o StrictHostKeyChecking=accept-new -T git@github.com)",
+      "Bash(git fetch *)",
+      "Bash(git push *)",
+      "Bash(npm -v)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('workspaces:', JSON.stringify\\(p.workspaces\\)\\); console.log\\('scripts:', JSON.stringify\\(p.scripts, null, 2\\)\\)\")",
+      "Bash([ -s \"$HOME/.nvm/nvm.sh\" ])",
+      "Bash(command -v fnm)",
+      "Read(//Users/abhinavdas/.nvm/versions/**)",
+      "Bash(bash .env.setup.sh)",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=10 root@187.77.186.176 'sudo -u postgres psql -d jphish -c \"select email, role, is_active, failed_login_attempts, locked_until, must_change_password, last_login_at from users order by role;\"')",
+      "Bash(scp -o BatchMode=yes /private/tmp/claude-501/-Users-abhinavdas-Desktop-jphish/5b35e96d-a6f6-43b2-931d-9d1f6ed7437e/scratchpad/reset-admin.js support@187.77.186.176:/home/support/reset-admin.js)",
+      "Bash(ssh -o BatchMode=yes support@187.77.186.176 'cd /home/support/htdocs/jphish.infocusit.in/backend && node /home/support/reset-admin.js admin@infocusit.in; rm -f /home/support/reset-admin.js')",
+      "Bash(scp -o BatchMode=yes /private/tmp/claude-501/-Users-abhinavdas-Desktop-jphish/5b35e96d-a6f6-43b2-931d-9d1f6ed7437e/scratchpad/reset-admin.js support@187.77.186.176:/home/support/htdocs/jphish.infocusit.in/backend/reset-admin.js)",
+      "Bash(ssh -o BatchMode=yes support@187.77.186.176 'cd /home/support/htdocs/jphish.infocusit.in/backend && node reset-admin.js admin@infocusit.in; rm -f reset-admin.js')",
+      "Bash(curl -s -o /tmp/login_body.txt -w 'HTTP %{http_code}\\\\n' --max-time 20 -X POST https://jphish.infocusit.in/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"admin@infocusit.in\",\"password\":\"TmpdvU4m7CcpdWj9x\"}')",
+      "Read(//tmp/**)"
     ]
   }
 }

@@ -9,7 +9,7 @@ import { useCan } from '@/lib/rbac';
 import { AccountMenu } from './AccountMenu';
 
 const ROUTE_LABEL: Record<string, string> = {
-  '/': 'Dashboard',
+  '/dashboard': 'Dashboard',
   '/campaigns': 'Campaigns',
   '/adaptive': 'Adaptive engine',
   '/alerts': 'Alerts',

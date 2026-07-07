@@ -27,7 +27,7 @@ export function CommandPalette(): JSX.Element | null {
   };
 
   const items: PaletteItem[] = [
-    { kind: 'route', label: 'Go to Dashboard', href: '/' },
+    { kind: 'route', label: 'Go to Dashboard', href: '/dashboard' },
     { kind: 'route', label: 'Go to Campaigns', href: '/campaigns' },
     { kind: 'route', label: 'Go to Adaptive engine', href: '/adaptive' },
     { kind: 'route', label: 'Go to Email templates', href: '/templates' },
