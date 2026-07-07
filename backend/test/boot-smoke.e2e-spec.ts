@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { Test } from '@nestjs/testing';
-import { ConfigModule } from '@nestjs/config';
-import { TypeOrmModule, getDataSourceToken } from '@nestjs/typeorm';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule, getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { BullModule, getQueueToken } from '@nestjs/bull';
 import { DataType, newDb } from 'pg-mem';
 import { randomUUID } from 'crypto';
@@ -31,6 +31,10 @@ import { CampaignTrackingEvent } from '../src/modules/email/entities/campaign-tr
 import { Group } from '../src/modules/groups/entities/group.entity';
 import { GroupMember } from '../src/modules/groups/entities/group-member.entity';
 import { LandingPage } from '../src/modules/landing/entities/landing-page.entity';
+
+import { LandingPageService } from '../src/modules/landing/services/landing-page.service';
+import { EmailTrackingService } from '../src/modules/email/services/email-tracking.service';
+import { UsageService } from '../src/modules/tenants/services/usage.service';
 
 const ALL_ENTITIES = [
   User, RefreshToken, AuditLog,
@@ -107,5 +111,34 @@ describe('Application DI graph', () => {
 
     await app.close();
     if (dataSource.isInitialized) await dataSource.destroy();
+  });
+});
+
+// The phish-server is a SEPARATE Nest app (main.ts boots it on PHISH_PORT) that
+// REUSES admin-side services (LandingPageService, EmailTrackingService). When one
+// of those services gains a new dependency, PhishServerModule must provide it too
+// or the phish app crashes on boot. This guard compiles the phish provider graph
+// so that class of regression fails a test instead of production.
+describe('PhishServerModule DI graph', () => {
+  it('resolves every reused service with the providers the phish module registers', async () => {
+    const repo = () => ({ findOne: jest.fn(), find: jest.fn(), save: jest.fn(), increment: jest.fn() });
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        LandingPageService,
+        EmailTrackingService,
+        UsageService,
+        { provide: ConfigService, useValue: { get: () => undefined } },
+        { provide: getRepositoryToken(LandingPage), useValue: repo() },
+        { provide: getRepositoryToken(CampaignTrackingEvent), useValue: repo() },
+        { provide: getRepositoryToken(Campaign), useValue: repo() },
+        { provide: getRepositoryToken(CampaignRecipient), useValue: repo() },
+        { provide: getRepositoryToken(Tenant), useValue: repo() },
+        { provide: getRepositoryToken(TenantUsage), useValue: repo() },
+      ],
+    }).compile();
+
+    expect(moduleRef.get(LandingPageService)).toBeDefined();
+    expect(moduleRef.get(EmailTrackingService)).toBeDefined();
+    await moduleRef.close();
   });
 });
