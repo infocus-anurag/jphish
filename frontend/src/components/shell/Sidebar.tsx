@@ -123,6 +123,7 @@ export function Sidebar(): JSX.Element {
           alt="Infocus-IT"
           style={{ height: 28, width: 'auto', background: '#fff', padding: '4px 7px', borderRadius: 6 }}
         />
+        <span className="sidebar-brand-name">JPhish</span>
       </div>
       <nav className="sidebar-nav">
         {groups.map((g) => {

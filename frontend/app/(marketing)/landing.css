@@ -104,10 +104,24 @@ html:has(.lp) { scroll-behavior: smooth; }
 }
 .lp .nav.scrolled { border-color: var(--line); background: color-mix(in srgb, var(--bg) 88%, transparent); }
 .lp .nav-inner { display: flex; align-items: center; gap: 28px; height: 68px; }
-.lp .brand { display: inline-flex; align-items: center; }
+.lp .brand { display: inline-flex; align-items: center; gap: 11px; }
 .lp .brand-logo {
   height: 34px; width: auto; border-radius: 7px; background: var(--logo-chip);
   padding: var(--logo-pad, 0); transition: background .2s ease;
+}
+/* Product wordmark sits after the Infocus-IT company mark, divided by a rule. */
+.lp .brand-name {
+  position: relative; padding-left: 12px; font-size: 20px; font-weight: 700;
+  letter-spacing: -0.02em; color: var(--ink); line-height: 1;
+}
+.lp .brand-name::before {
+  content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 1.5px; height: 20px; background: var(--line);
+}
+@media (max-width: 560px) {
+  .lp .brand { gap: 8px; }
+  .lp .brand-name { font-size: 17px; padding-left: 9px; }
+  .lp .brand-name::before { height: 16px; }
 }
 .lp[data-lp-theme="dark"] .brand-logo { --logo-pad: 5px 9px; height: 44px; }
 @media (prefers-color-scheme: dark) { .lp:not([data-lp-theme="light"]) .brand-logo { --logo-pad: 5px 9px; height: 44px; } }
@@ -281,7 +295,7 @@ html:has(.lp) { scroll-behavior: smooth; }
 /* Footer */
 .lp .foot { border-top: 1px solid var(--line); padding: 62px 0 40px; background: var(--bg); }
 .lp .foot-grid { display: grid; grid-template-columns: 1.6fr repeat(3, 1fr); gap: 40px; margin-bottom: 46px; }
-.lp .foot-brand .brand-logo { margin-bottom: 14px; }
+.lp .foot-brand .brand { margin-bottom: 14px; }
 .lp .foot-brand p { font-size: 14px; color: var(--slate); max-width: 26em; }
 .lp .foot-col h4 { font-size: 12.5px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
 .lp .foot-col a { display: block; font-size: 14px; color: var(--slate); padding: 5px 0; transition: color .15s ease; }
@@ -487,21 +501,42 @@ html:has(.lp) { scroll-behavior: smooth; }
 .lp .mk-pill.suspended { background: #FCEBD8; color: #B5730B; }
 .lp .mk-plan { font-size: 2.2cqw; color: var(--slate); }
 
-/* Phishing email (phone) */
-.lp .mk-mail { background: var(--bg); }
-.lp .mk-mail-bar { font-size: 4.5cqw; font-weight: 650; padding: 6cqw 5cqw 2cqw; color: var(--ink); }
-.lp .mk-mail-head { padding: 0 5cqw 3.5cqw; border-bottom: 1px solid var(--line); }
+/* Phishing email (phone) — realistic branded Microsoft security-alert lure.
+   Fixed light palette on purpose: real emails render on white regardless of the
+   viewer's OS theme, so this reads as a genuine inbox message. */
+.lp .mk-mail { background: #fff; color: #201f1e;
+  font-family: 'Segoe UI', var(--sans); overflow-y: hidden; }
+.lp .mk-mail-chrome { display: flex; align-items: center; justify-content: space-between;
+  padding: 5cqw 4cqw 2.5cqw; font-size: 3.3cqw; color: #605e5c; background: #faf9f8; }
+.lp .mk-mail-back { font-weight: 600; color: #0067b8; }
+.lp .mk-mail-dots { font-weight: 700; letter-spacing: 1px; }
+.lp .mk-mail-brand { display: flex; align-items: center; gap: 2.6cqw;
+  padding: 2cqw 4.5cqw 3cqw; background: #faf9f8; border-bottom: 1px solid #edebe9; }
+.lp .ms-logo { display: grid; grid-template-columns: repeat(2, 1fr); gap: .7cqw; width: 6.6cqw; height: 6.6cqw; }
+.lp .ms-logo i { display: block; }
+.lp .ms-logo i:nth-child(1) { background: #f25022; } .lp .ms-logo i:nth-child(2) { background: #7fba00; }
+.lp .ms-logo i:nth-child(3) { background: #00a4ef; } .lp .ms-logo i:nth-child(4) { background: #ffb900; }
+.lp .ms-name { font-size: 3.9cqw; font-weight: 600; color: #5e5e5e; letter-spacing: .2px; }
+.lp .mk-mail-head { padding: 4cqw 4.5cqw 3.5cqw; background: #fff; border-bottom: 1px solid #edebe9; }
+.lp .mk-mail-subj { font-size: 5cqw; font-weight: 700; color: #201f1e; margin-bottom: 3cqw; line-height: 1.2; }
 .lp .mk-mail-from { display: flex; align-items: center; gap: 3cqw; }
-.lp .mk-ava { width: 11cqw; height: 11cqw; border-radius: 50%; background: var(--accent); color: #fff;
-  display: grid; place-items: center; font-size: 4cqw; font-weight: 700; flex: none; }
-.lp .mk-mail-from > span:last-child { display: flex; flex-direction: column; gap: 1cqw; min-width: 0; }
-.lp .mk-mail-from b { font-size: 4cqw; } .lp .mk-mail-from i { font-size: 3cqw; font-style: normal; color: var(--muted);
+.lp .mk-ava.ms { width: 9.5cqw; height: 9.5cqw; border-radius: 50%; background: #0067b8; color: #fff;
+  display: grid; place-items: center; font-size: 4.4cqw; font-weight: 700; flex: none; }
+.lp .mk-mail-who { display: flex; flex-direction: column; gap: .6cqw; min-width: 0; }
+.lp .mk-mail-who b { font-size: 3.7cqw; color: #201f1e; }
+.lp .mk-mail-who i { font-size: 2.85cqw; font-style: normal; color: #605e5c;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lp .mk-mail-subj { font-size: 4.4cqw; font-weight: 650; margin: 3.5cqw 0 1.5cqw; line-height: 1.25; }
-.lp .mk-mail-meta { font-size: 3cqw; color: var(--muted); }
-.lp .mk-mail-body { padding: 4cqw 5cqw; display: flex; flex-direction: column; gap: 3.5cqw; }
-.lp .mk-mail-body p { font-size: 3.8cqw; line-height: 1.5; color: var(--slate); margin: 0; }
-.lp .mk-mail-body p b { color: var(--ink); }
-.lp .mk-mail-btn { align-self: flex-start; background: var(--accent); color: #fff; font-size: 3.8cqw;
-  font-weight: 600; padding: 3cqw 5cqw; border-radius: 2.5cqw; }
-.lp .mk-mail-sig { color: var(--muted) !important; font-size: 3.4cqw !important; }
+.lp .mk-mail-meta { font-size: 2.9cqw; color: #8a8886; margin-top: 2.4cqw; }
+.lp .mk-mail-body { padding: 4cqw 4.5cqw 5cqw; background: #fff; display: flex; flex-direction: column; gap: 3.2cqw; }
+.lp .mk-mail-body p { font-size: 3.5cqw; line-height: 1.55; color: #3b3a39; margin: 0; }
+.lp .mk-mail-body p b { color: #201f1e; }
+.lp .mk-mail-detail { border: 1px solid #edebe9; border-radius: 1.6cqw; background: #faf9f8;
+  padding: 2.6cqw 3cqw; display: flex; flex-direction: column; gap: 2cqw; }
+.lp .mk-mail-detail span { display: flex; justify-content: space-between; align-items: baseline; gap: 2cqw; font-size: 3.2cqw; }
+.lp .mk-mail-detail em { font-style: normal; color: #605e5c; }
+.lp .mk-mail-detail b { color: #201f1e; font-weight: 600; }
+.lp .mk-mail-btn { align-self: flex-start; background: #0067b8; color: #fff; font-size: 3.6cqw;
+  font-weight: 600; padding: 2.9cqw 5.5cqw; border-radius: 1cqw; box-shadow: 0 1cqw 3cqw rgba(0,103,184,.28); }
+.lp .mk-mail-sig { color: #605e5c !important; font-size: 3.3cqw !important; line-height: 1.4 !important; }
+.lp .mk-mail-fine { color: #a19f9d !important; font-size: 2.7cqw !important; line-height: 1.5 !important; }
+.lp .mk-mail-fine u { color: #0067b8; text-decoration: underline; }

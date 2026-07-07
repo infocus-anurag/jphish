@@ -94,9 +94,10 @@ export default function MarketingPage(): JSX.Element {
       {/* NAV */}
       <header className="nav">
         <div className="wrap nav-inner">
-          <a href="#top" className="brand" aria-label="Infocus-IT home">
+          <a href="#top" className="brand" aria-label="JPhish by Infocus-IT — home">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className="brand-logo" src={LOGO} alt="Infocus-IT" width={238} height={77} />
+            <span className="brand-name">JPhish</span>
           </a>
           <nav className="nav-links">
             <a href="#product">Product</a>
@@ -188,14 +189,14 @@ export default function MarketingPage(): JSX.Element {
       </section>
 
       {/* CAPABILITY BAND */}
-      <section className="statband">
+      {/* <section className="statband">
         <div className="wrap statband-inner">
           <div className="st"><div className="n">6</div><div className="l">Integrated modules</div></div>
           <div className="st"><div className="n">3</div><div className="l">Signals tracked — open, click, submit</div></div>
           <div className="st"><div className="n">Multi&#8209;tenant</div><div className="l">Super-admin control plane</div></div>
           <div className="st"><div className="n">Minutes</div><div className="l">From template to launched campaign</div></div>
         </div>
-      </section>
+      </section> */}
 
       {/* PRODUCT SHOWCASE */}
       <ProductShowcase />
@@ -478,8 +479,11 @@ export default function MarketingPage(): JSX.Element {
         <div className="wrap">
           <div className="foot-grid">
             <div className="foot-brand">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img className="brand-logo" src={LOGO} alt="Infocus-IT" width={238} height={77} />
+              <span className="brand">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img className="brand-logo" src={LOGO} alt="Infocus-IT" width={238} height={77} />
+                <span className="brand-name">JPhish</span>
+              </span>
               <p>Enterprise phishing simulation and security awareness training, from one multi-tenant platform.</p>
             </div>
             <div className="foot-col">

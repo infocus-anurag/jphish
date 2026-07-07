@@ -57,9 +57,18 @@
     radial-gradient(120% 90% at 100% 0%, rgba(46,91,255,.55), transparent 55%),
     linear-gradient(150deg, var(--a-panel-1), var(--a-panel-2));
 }
+.auth-aside .aside-brand { display: inline-flex; align-items: center; gap: 13px; align-self: flex-start; }
 .auth-aside .aside-logo {
   height: 40px; width: auto; background: #fff;
-  padding: 7px 12px; border-radius: 10px; align-self: flex-start;
+  padding: 7px 12px; border-radius: 10px;
+}
+.auth-aside .aside-brand-name {
+  position: relative; padding-left: 14px; color: #fff;
+  font-size: 21px; font-weight: 700; letter-spacing: -.02em; line-height: 1;
+}
+.auth-aside .aside-brand-name::before {
+  content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 1.5px; height: 20px; background: rgba(255, 255, 255, .3);
 }
 .auth-aside .aside-copy { max-width: 26em; }
 .auth-aside h2 {
@@ -79,6 +88,11 @@
 /* ---- Right form panel ---- */
 .auth-main { display: grid; place-items: center; padding: 40px 24px; }
 .auth-card { width: 100%; max-width: 400px; }
+/* Brand lockup shows only on mobile, where the left aside is hidden (see media query). */
+.auth-card .card-brand { display: none; align-items: center; justify-content: center; gap: 10px; margin: 0 auto 22px; }
+.auth-card .card-brand .card-logo { display: block; height: 40px; width: auto; margin: 0; }
+.auth-card .card-brand-name { position: relative; padding-left: 11px; font-size: 20px; font-weight: 700; letter-spacing: -.02em; line-height: 1; color: var(--a-ink, #0b1220); }
+.auth-card .card-brand-name::before { content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 1.5px; height: 18px; background: var(--a-line, #d3dae6); }
 .auth-card .card-logo { display: none; height: 40px; width: auto; margin: 0 auto 22px; }
 .auth-card h1 { font-size: 26px; font-weight: 700; letter-spacing: -.02em; margin: 0 0 6px; }
 .auth-card .sub { font-size: 14.5px; color: var(--a-slate); margin: 0 0 26px; line-height: 1.55; }
@@ -145,7 +159,7 @@
 @media (max-width: 860px) {
   .auth { grid-template-columns: 1fr; }
   .auth-aside { display: none; }
-  .auth-card .card-logo { display: block; }
+  .auth-card .card-brand { display: flex; }
 }
 @media (prefers-reduced-motion: reduce) {
   .auth-btn, .auth-spinner { transition: none; animation: none; }

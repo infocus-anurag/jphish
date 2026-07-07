@@ -39,8 +39,11 @@ export default function ForgotPasswordPage(): JSX.Element {
       <AuthAside />
       <div className="auth-main">
         <div className="auth-card">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="card-logo" src="/info-logo.png" alt="Infocus-IT" />
+          <div className="card-brand">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="card-logo" src="/info-logo.png" alt="Infocus-IT" />
+            <span className="card-brand-name">JPhish</span>
+          </div>
 
           {sentTo ? (
             <div className="auth-confirm">

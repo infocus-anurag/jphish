@@ -70,8 +70,11 @@ function LoginForm(): JSX.Element {
       <AuthAside />
       <div className="auth-main">
         <div className="auth-card">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="card-logo" src="/info-logo.png" alt="Infocus-IT" />
+          <div className="card-brand">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="card-logo" src="/info-logo.png" alt="Infocus-IT" />
+            <span className="card-brand-name">JPhish</span>
+          </div>
           <h1>Sign in to your workspace</h1>
           <p className="sub">
             Use your work email and the password your administrator gave you.

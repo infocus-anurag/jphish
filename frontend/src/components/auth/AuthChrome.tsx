@@ -6,9 +6,10 @@ import Link from 'next/link';
 export function AuthAside(): JSX.Element {
   return (
     <aside className="auth-aside">
-      <Link href="/" aria-label="Infocus-IT home">
+      <Link href="/" className="aside-brand" aria-label="JPhish by Infocus-IT — home">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="aside-logo" src="/info-logo.png" alt="Infocus-IT" />
+        <span className="aside-brand-name">JPhish</span>
       </Link>
       <div className="aside-copy">
         <h2>Enterprise phishing simulations that build real security awareness</h2>

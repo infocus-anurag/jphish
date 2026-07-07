@@ -24,7 +24,7 @@ interface Shot {
 
 const PRIMARY: Shot = {
   src: '/shots/dashboard.png',
-  url: 'app.infocusit.in/dashboard',
+  url: 'jphish.infocusit.in/dashboard',
   title: 'Risk analytics dashboard',
   desc: 'Live open, click and submission rates with a conversion funnel and per-campaign risk — the screen incumbents only describe.',
   mock: <DashboardMock />,
@@ -33,21 +33,21 @@ const PRIMARY: Shot = {
 const SECONDARY: Shot[] = [
   {
     src: '/shots/campaign-wizard.png',
-    url: 'app.infocusit.in/campaigns/new',
+    url: 'jphish.infocusit.in/campaigns/new',
     title: 'Campaign builder',
     desc: 'Template → landing → targets → launch, in one guided flow.',
     mock: <WizardMock />,
   },
   {
     src: '/shots/reports.png',
-    url: 'app.infocusit.in/reports',
+    url: 'jphish.infocusit.in/reports',
     title: 'Reports & risk scoring',
     desc: 'Per-target timelines and colour-coded risk, exportable to CSV.',
     mock: <ReportsMock />,
   },
   {
     src: '/shots/super-admin.png',
-    url: 'app.infocusit.in/tenants',
+    url: 'jphish.infocusit.in/tenants',
     title: 'Super-admin control plane',
     desc: 'Every tenant, plan and feature toggle from one overview.',
     mock: <TenantsMock />,
@@ -70,7 +70,7 @@ function BrowserFrame({ shot, big }: { shot: Shot; big?: boolean }): JSX.Element
       <div className="browser-body">
         {shot.mock}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={shot.src} alt={shot.title} loading="lazy" onError={hideOnError} />
+        {/* <img src={shot.src} alt={shot.title} loading="lazy" onError={hideOnError} /> */}
       </div>
     </figure>
   );
@@ -284,17 +284,39 @@ function TenantsMock(): JSX.Element {
 function EmailMock(): JSX.Element {
   return (
     <div className="mk mk-mail" aria-hidden="true">
-      <div className="mk-mail-bar">Inbox</div>
-      <div className="mk-mail-head">
-        <div className="mk-mail-from"><span className="mk-ava">IT</span><span><b>IT Support</b><i>no-reply@it-support.northwind-trading.com</i></span></div>
-        <div className="mk-mail-subj">Action required: your password expires today</div>
-        <div className="mk-mail-meta">to alex.morgan@northwind-trading.com · 9:02 AM</div>
+      <div className="mk-mail-chrome">
+        <span className="mk-mail-back">‹ Inbox</span>
+        <span className="mk-mail-dots">⋯</span>
       </div>
+
+      <div className="mk-mail-brand">
+        <span className="ms-logo"><i /><i /><i /><i /></span>
+        <span className="ms-name">Microsoft</span>
+      </div>
+
+      <div className="mk-mail-head">
+        <div className="mk-mail-subj">Unusual sign-in activity</div>
+        <div className="mk-mail-from">
+          <span className="mk-ava ms">M</span>
+          <span className="mk-mail-who">
+            <b>Microsoft account team</b>
+            <i>account-security-noreply@accountprotection.microsoft.com</i>
+          </span>
+        </div>
+        <div className="mk-mail-meta">to alex.morgan@northwind-trading.com · 08:47</div>
+      </div>
+
       <div className="mk-mail-body">
-        <p>Hi Alex,</p>
-        <p>Our records show your network password <b>expires today</b>. To avoid losing access to email and shared drives, please verify your account and set a new password.</p>
-        <span className="mk-mail-btn">Reset my password</span>
-        <p className="mk-mail-sig">Thanks,<br />IT Support · Northwind Trading Co.</p>
+        <p>We detected something unusual about a recent sign-in to the Microsoft account <b>alex.morgan@northwind-trading.com</b>.</p>
+        <div className="mk-mail-detail">
+          <span><em>Country / region</em><b>Russia</b></span>
+          <span><em>IP address</em><b>203.0.113.44</b></span>
+          <span><em>Date</em><b>Today, 08:44 GMT</b></span>
+        </div>
+        <p>If this was you, you can safely ignore this message. If not, your account may be compromised — review your recent activity to secure it.</p>
+        <span className="mk-mail-btn">Review recent activity</span>
+        <p className="mk-mail-sig">Thanks,<br />The Microsoft account team</p>
+        <p className="mk-mail-fine">This is an automated message. Microsoft will never ask for your password by email. <u>Privacy Statement</u></p>
       </div>
     </div>
   );
