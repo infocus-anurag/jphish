@@ -7,11 +7,14 @@ import { PublicLandingController } from './controllers/public-landing.controller
 
 import { EmailTrackingService } from '@/modules/email/services/email-tracking.service';
 import { LandingPageService } from '@/modules/landing/services/landing-page.service';
+import { UsageService } from '@/modules/tenants/services/usage.service';
 
 import { CampaignTrackingEvent } from '@/modules/email/entities/campaign-tracking-event.entity';
 import { LandingPage } from '@/modules/landing/entities/landing-page.entity';
 import { Campaign } from '@/modules/campaigns/entities/campaign.entity';
 import { CampaignRecipient } from '@/modules/campaigns/entities/campaign-recipient.entity';
+import { Tenant } from '@/modules/tenants/entities/tenant.entity';
+import { TenantUsage } from '@/modules/tenants/entities/tenant-usage.entity';
 
 // Dedicated NestJS app that serves ONLY the public surface a phishing target
 // can reach: landing pages and tracking endpoints. Runs on its own port
@@ -46,9 +49,13 @@ import { CampaignRecipient } from '@/modules/campaigns/entities/campaign-recipie
       LandingPage,
       Campaign,
       CampaignRecipient,
+      // LandingPageService (reused here) depends on UsageService, which needs
+      // these repos. The phish surface never mutates usage, but DI must resolve.
+      Tenant,
+      TenantUsage,
     ]),
   ],
   controllers: [PublicTrackingController, PublicLandingController],
-  providers: [EmailTrackingService, LandingPageService],
+  providers: [EmailTrackingService, LandingPageService, UsageService],
 })
 export class PhishServerModule {}
