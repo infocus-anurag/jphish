@@ -18,6 +18,7 @@ import { TrackingController } from './controllers/tracking.controller';
 import { CampaignProcessor } from './processors/campaign.processor';
 
 import { AuthModule } from '../auth/auth.module';
+import { TenantsModule } from '../tenants/tenants.module';
 import { Campaign } from '../campaigns/entities/campaign.entity';
 import { CampaignRecipient } from '../campaigns/entities/campaign-recipient.entity';
 
@@ -32,6 +33,7 @@ import { CampaignRecipient } from '../campaigns/entities/campaign-recipient.enti
     ]),
     BullModule.registerQueue({ name: 'campaigns' }),
     AuthModule,
+    TenantsModule,
   ],
   controllers: [SmtpProfilesController, EmailTemplatesController, TrackingController],
   providers: [

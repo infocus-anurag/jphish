@@ -6,6 +6,7 @@ import { Campaign } from '../entities/campaign.entity';
 import { CampaignRecipient } from '../entities/campaign-recipient.entity';
 import { User } from '@/modules/auth/entities/user.entity';
 import { AuditService } from '@/modules/auth/services/audit.service';
+import { UsageService } from '@/modules/tenants/services/usage.service';
 import { CampaignStatus } from '../enums/campaign-status.enum';
 import {
   ConflictException,
@@ -74,6 +75,14 @@ describe('CampaignsService', () => {
           useValue: { add: jest.fn(), pause: jest.fn(), resume: jest.fn() },
         },
         { provide: AuditService, useValue: { record: jest.fn() } },
+        {
+          provide: UsageService,
+          useValue: {
+            assertCanCreateResource: jest.fn(),
+            incrementUsage: jest.fn(),
+            decrementUsage: jest.fn(),
+          },
+        },
       ],
     }).compile();
 

@@ -20,7 +20,8 @@ The `(app)` group layout gates auth and renders the `AppShell` (sidebar + topbar
 
 | Route | Page file | Screen | Wired to API? |
 |---|---|---|---|
-| `/` (Dashboard) | `app/(app)/page.tsx` | `DashboardScreen` | ✅ `/reports/dashboard` + `/campaigns` |
+| `/` (Marketing landing) | `app/(marketing)/page.tsx` | inline (scoped `landing.css`) | Public — no auth, own light/dark toggle, Infocus-IT logo |
+| `/dashboard` (Dashboard) | `app/(app)/dashboard/page.tsx` | `DashboardScreen` | ✅ `/reports/dashboard` + `/campaigns` |
 | `/campaigns` | `app/(app)/campaigns/page.tsx` | `CampaignsScreen` | ✅ |
 | `/templates` | `app/(app)/templates/page.tsx` | `TemplatesScreen` | ✅ |
 | `/landing` | `app/(app)/landing/page.tsx` | `LandingScreen` | ✅ |
@@ -33,13 +34,19 @@ The `(app)` group layout gates auth and renders the `AppShell` (sidebar + topbar
 | Wizard (campaign create) | modal via `WizardHost` | `WizardScreen` | ✅ create flow |
 | `/adaptive` | `app/(app)/adaptive/page.tsx` | `AdaptiveScreen` | ⬚ empty state (no backend) |
 | `/alerts` | `app/(app)/alerts/page.tsx` | `AlertsScreen` | ⬚ empty state |
-| `/tenants` | `app/(app)/tenants/page.tsx` | `TenantsScreen` | ⬚ empty state (super-admin only) |
+| `/tenants` | `app/(app)/tenants/page.tsx` | `TenantsScreen` | ✅ platform admin, super-admin only — CRUD + plan/status/features/quotas/usage (`lib/api/tenants.ts`, `hooks/useTenants.ts`) |
 | `/training` | `app/(app)/training/page.tsx` | `TrainingScreen` | ⬚ empty state |
-| `/login` | `app/login/page.tsx` | — | ✅ login form |
+| `/login` | `app/login/page.tsx` | `AuthChrome` split-panel | ✅ login form (logo, show/hide pw, forgot link; defaults `next`→`/dashboard`) |
+| `/forgot-password` | `app/forgot-password/page.tsx` | `AuthChrome` | ⚠️ UI done; calls `POST /auth/forgot-password` which the **backend doesn't implement yet** (see `docs/landing-auth-tenant-plan.md`) |
 | `/unauthorized` | `app/unauthorized/page.tsx` | — | 403 fallback |
 
-**⬚ Empty-state screens are intentional** (Adaptive, Alerts, Tenants, Training, Settings→
+> **Public routes** (no AuthGate redirect): `/`, `/login`, `/forgot-password`, `/reset-password`
+> — see `PUBLIC_PATHS` in `AuthGate.tsx`. Everything else is gated → `/login?next=<path>`.
+> The app surface moved from `/` to `/dashboard` (2026-07); `/` is now the public landing.
+
+**⬚ Empty-state screens are intentional** (Adaptive, Alerts, Training, Settings→
 Domains/Security/Billing/API, NotifPanel): no backend exists, so they show an honest `EmptyState` —
+(Tenants is now fully wired — see the routing table.)
 do **not** fabricate data and do **not** hide the nav entry. To wire one later, replace its `EmptyState`
 with the standard query pattern below.
 

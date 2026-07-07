@@ -13,6 +13,8 @@ import { CreateEmailTemplateDto, UpdateEmailTemplateDto, TestEmailTemplateDto } 
 import { User } from '@/modules/auth/entities/user.entity';
 import { UserRole } from '@/modules/auth/enums/user-role.enum';
 import { AuditService, AuditContext } from '@/modules/auth/services/audit.service';
+import { UsageService } from '@/modules/tenants/services/usage.service';
+import { UsageMetric } from '@/modules/tenants/enums/usage-metric.enum';
 import { EmailService } from './email.service';
 import { SmtpProfileService } from './smtp-profile.service';
 
@@ -23,6 +25,7 @@ export class EmailTemplateService {
     private audit: AuditService,
     private emailService: EmailService,
     private smtpProfiles: SmtpProfileService,
+    private usage: UsageService,
   ) {}
 
   async create(
@@ -35,12 +38,21 @@ export class EmailTemplateService {
       throw new ConflictException('An email template with this name already exists');
     }
 
+    if (creator.tenantId) {
+      await this.usage.assertCanCreateResource(creator.tenantId, UsageMetric.TEMPLATES);
+    }
+
     const template = this.templates.create({
       ...dto,
       createdById: creator.id,
+      tenantId: creator.tenantId ?? null,
     });
 
     const saved = await this.templates.save(template);
+
+    if (creator.tenantId) {
+      await this.usage.incrementUsage(creator.tenantId, UsageMetric.TEMPLATES);
+    }
 
     await this.audit.record({
       action: 'email_template.created',
@@ -116,6 +128,10 @@ export class EmailTemplateService {
     }
 
     await this.templates.remove(template);
+
+    if (template.tenantId) {
+      await this.usage.decrementUsage(template.tenantId, UsageMetric.TEMPLATES);
+    }
 
     await this.audit.record({
       action: 'email_template.deleted',

@@ -12,6 +12,7 @@ import { EmailModule } from './modules/email/email.module';
 import { GroupsModule } from './modules/groups/groups.module';
 import { LandingModule } from './modules/landing/landing.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { TenantsModule } from './modules/tenants/tenants.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     GroupsModule,
     LandingModule,
     ReportsModule,
+    TenantsModule,
   ],
   controllers: [],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

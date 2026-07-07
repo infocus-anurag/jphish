@@ -16,6 +16,8 @@ import {
   CampaignRecipient,
   CampaignRecipientStatus,
 } from '@/modules/campaigns/entities/campaign-recipient.entity';
+import { UsageService } from '@/modules/tenants/services/usage.service';
+import { UsageMetric } from '@/modules/tenants/enums/usage-metric.enum';
 
 /** How many phishing emails the worker sends in parallel. Paired with the
  *  pooled SMTP transporter in EmailService so a bulk (100s) campaign drains
@@ -49,6 +51,7 @@ export class CampaignProcessor {
     @InjectRepository(SmtpProfile) private smtpProfiles: Repository<SmtpProfile>,
     @InjectRepository(Campaign) private campaigns: Repository<Campaign>,
     @InjectRepository(CampaignRecipient) private recipients: Repository<CampaignRecipient>,
+    private usage: UsageService,
   ) {}
 
   @Process({ name: 'SEND_CAMPAIGN_EMAIL', concurrency: SEND_CONCURRENCY })
@@ -138,6 +141,11 @@ export class CampaignProcessor {
         { status: CampaignRecipientStatus.SENT, sentAt: new Date() },
       );
       await this.campaigns.increment({ id: campaignId }, 'emailsSent', 1);
+      // Count the send against the tenant's email quota (no-op for unscoped
+      // campaigns). Tracking-only: emails are never blocked mid-flight.
+      if (campaign.tenantId) {
+        await this.usage.incrementUsage(campaign.tenantId, UsageMetric.EMAILS_SENT);
+      }
 
       this.logger.debug(`Email sent to ${recipientEmail} messageId=${result.messageId}`);
       job.progress(100);

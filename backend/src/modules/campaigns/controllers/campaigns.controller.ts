@@ -11,11 +11,19 @@ import { CurrentUser } from '@/modules/auth/decorators/current-user.decorator';
 import { Roles } from '@/modules/auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@/modules/auth/guards/roles.guard';
+import { TenantAccessGuard } from '@/modules/tenants/guards/tenant-access.guard';
+import { QuotaGuard } from '@/modules/tenants/guards/quota.guard';
+import {
+  RequireCapability,
+  EnforceQuota,
+} from '@/modules/tenants/decorators/tenant-access.decorators';
+import { TenantCapability } from '@/modules/tenants/enums/tenant-capability.enum';
+import { UsageMetric } from '@/modules/tenants/enums/usage-metric.enum';
 import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('Campaigns')
 @ApiBearerAuth('JWT')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantAccessGuard, QuotaGuard)
 @Controller({ path: 'campaigns', version: '1' })
 export class CampaignsController {
   constructor(private readonly campaigns: CampaignsService) {}
@@ -25,6 +33,8 @@ export class CampaignsController {
   }
 
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @RequireCapability(TenantCapability.WRITE)
+  @EnforceQuota(UsageMetric.CAMPAIGNS)
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new campaign' })
@@ -67,6 +77,7 @@ export class CampaignsController {
   }
 
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @RequireCapability(TenantCapability.WRITE)
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Update campaign (only draft campaigns)' })
@@ -81,6 +92,7 @@ export class CampaignsController {
   }
 
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @RequireCapability(TenantCapability.WRITE)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete campaign (only draft campaigns)' })
@@ -93,6 +105,7 @@ export class CampaignsController {
   }
 
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @RequireCapability(TenantCapability.LAUNCH_CAMPAIGN)
   @Patch(':id/launch')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Launch campaign' })
@@ -120,6 +133,7 @@ export class CampaignsController {
   }
 
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @RequireCapability(TenantCapability.LAUNCH_CAMPAIGN)
   @Patch(':id/resume')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Resume paused campaign' })

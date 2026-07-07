@@ -12,6 +12,8 @@ import { User } from '../entities/user.entity';
 import { TokensService } from './tokens.service';
 import { AuditService, AuditContext } from './audit.service';
 import { ChangePasswordDto } from '../dto/change-password.dto';
+import { Tenant } from '../../tenants/entities/tenant.entity';
+import { canLogin } from '../../tenants/access/platform-access.policy';
 
 export interface LoginResult {
   user: User;
@@ -26,10 +28,32 @@ export class AuthService {
 
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
+    @InjectRepository(Tenant) private readonly tenants: Repository<Tenant>,
     private readonly tokens: TokensService,
     private readonly audit: AuditService,
     private readonly config: ConfigService,
   ) {}
+
+  /**
+   * Enforce the tenant's lifecycle access policy at login. Platform-level users
+   * (no tenant) are always allowed; tenant users are blocked when their tenant
+   * cannot log in (PENDING/DISABLED/ARCHIVED). Centralized in canLogin().
+   */
+  private async assertTenantMayLogin(user: User, ctx: AuditContext): Promise<void> {
+    if (!user.tenantId) return;
+    const tenant = await this.tenants.findOne({ where: { id: user.tenantId } });
+    if (tenant && canLogin(tenant.status)) return;
+    await this.audit.record({
+      action: 'auth.login.denied',
+      actorId: user.id,
+      actorEmail: user.email,
+      metadata: { reason: tenant ? `tenant_${tenant.status}` : 'tenant_missing' },
+      ctx,
+    });
+    throw new ForbiddenException(
+      tenant ? 'Your organization does not currently have access.' : 'Organization not found.',
+    );
+  }
 
   private get maxFails(): number {
     return Number(this.config.get('AUTH_MAX_FAILED_ATTEMPTS', 5));
@@ -95,6 +119,9 @@ export class AuthService {
       });
       throw new UnauthorizedException('Invalid email or password');
     }
+
+    // Password is correct — now gate on the tenant's lifecycle status.
+    await this.assertTenantMayLogin(user, ctx);
 
     await this.users.update(user.id, {
       failedLoginAttempts: 0,

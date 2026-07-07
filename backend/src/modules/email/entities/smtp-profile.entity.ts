@@ -33,6 +33,12 @@ export class SmtpProfile extends BaseEntity {
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
+  // Owning tenant (null = platform-level / unscoped). Drives the
+  // SENDING_PROFILES usage quota.
+  @Index()
+  @Column({ name: 'tenant_id', type: 'uuid', nullable: true })
+  tenantId: string | null;
+
   @Column({ type: 'uuid' })
   createdById: string;
 

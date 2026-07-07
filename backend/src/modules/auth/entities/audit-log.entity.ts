@@ -5,6 +5,7 @@ export type AuditAction =
   | 'auth.login.success'
   | 'auth.login.failed'
   | 'auth.login.locked'
+  | 'auth.login.denied'
   | 'auth.logout'
   | 'auth.refresh.success'
   | 'auth.refresh.reuse_detected'

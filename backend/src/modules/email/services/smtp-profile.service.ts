@@ -6,6 +6,8 @@ import { CreateSmtpProfileDto, UpdateSmtpProfileDto, TestSmtpProfileDto } from '
 import { User } from '@/modules/auth/entities/user.entity';
 import { UserRole } from '@/modules/auth/enums/user-role.enum';
 import { AuditService, AuditContext } from '@/modules/auth/services/audit.service';
+import { UsageService } from '@/modules/tenants/services/usage.service';
+import { UsageMetric } from '@/modules/tenants/enums/usage-metric.enum';
 import { EmailService } from './email.service';
 
 @Injectable()
@@ -14,6 +16,7 @@ export class SmtpProfileService {
     @InjectRepository(SmtpProfile) private profiles: Repository<SmtpProfile>,
     private emailService: EmailService,
     private audit: AuditService,
+    private usage: UsageService,
   ) {}
 
   async create(dto: CreateSmtpProfileDto, creator: User, ctx: AuditContext): Promise<SmtpProfile> {
@@ -22,12 +25,21 @@ export class SmtpProfileService {
       throw new ConflictException('An SMTP profile with this name already exists');
     }
 
+    if (creator.tenantId) {
+      await this.usage.assertCanCreateResource(creator.tenantId, UsageMetric.SENDING_PROFILES);
+    }
+
     const profile = this.profiles.create({
       ...dto,
       createdById: creator.id,
+      tenantId: creator.tenantId ?? null,
     });
 
     const saved = await this.profiles.save(profile);
+
+    if (creator.tenantId) {
+      await this.usage.incrementUsage(creator.tenantId, UsageMetric.SENDING_PROFILES);
+    }
 
     await this.audit.record({
       action: 'smtp_profile.created',
@@ -99,6 +111,10 @@ export class SmtpProfileService {
     }
 
     await this.profiles.remove(profile);
+
+    if (profile.tenantId) {
+      await this.usage.decrementUsage(profile.tenantId, UsageMetric.SENDING_PROFILES);
+    }
 
     await this.audit.record({
       action: 'smtp_profile.deleted',

@@ -27,6 +27,12 @@ export class Campaign extends BaseEntity {
   @Column({ type: 'uuid' })
   ownerId: string;
 
+  // Owning tenant (null = platform-level / unscoped). Drives the CAMPAIGNS quota
+  // and the EMAILS_SENT counter incremented as the campaign sends.
+  @Index()
+  @Column({ name: 'tenant_id', type: 'uuid', nullable: true })
+  tenantId: string | null;
+
   @Column({ type: 'uuid', nullable: true })
   smtpProfileId: string | null;
 

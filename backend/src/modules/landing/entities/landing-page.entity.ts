@@ -38,6 +38,12 @@ export class LandingPage extends BaseEntity {
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
+  // Owning tenant (null = platform-level / unscoped). Set from the creator's
+  // tenant; drives the LANDING_PAGES usage quota.
+  @Index()
+  @Column({ name: 'tenant_id', type: 'uuid', nullable: true })
+  tenantId: string | null;
+
   @Column({ type: 'uuid' })
   createdById: string;
 

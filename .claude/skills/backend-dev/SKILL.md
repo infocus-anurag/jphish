@@ -52,6 +52,7 @@ module wiring — confirm in `auth.module.ts` when touching security.
 | Groups | `modules/groups` | `/groups` | ✅ | Target groups + members |
 | Landing | `modules/landing` | `/landing-pages` | ✅ | Fake landing pages (slug, htmlContent, capture type, redirect) |
 | Reports | `modules/reports` | `/reports` | ✅ | Dashboard + per-campaign analytics |
+| Tenants | `modules/tenants` | `/tenants`, `/plans` | ✅ | Multi-tenancy authority: Tenant CRUD + lifecycle status, Plan catalog + per-tenant subscription/feature flags. See below |
 | Phish-server | `phish-server` | `/t/*`, `/p/*` | ✅ (2nd app) | Public tracking + landing render, separate app booted on `PHISH_PORT` |
 
 **2026-06 UX-pass endpoints (campaign setup flow):**
@@ -82,6 +83,87 @@ module wiring — confirm in `auth.module.ts` when touching security.
   is HttpOnly, path `/api/v1/auth`. bcrypt rounds 12 (4 in tests). Account lockout after
   `AUTH_MAX_FAILED_ATTEMPTS`. Login is constant-time (always runs a bcrypt compare).
 - **Audit**: every auth event + user mutation writes an `audit_logs` row (admin-only to read; capped).
+
+### Tenants module (multi-tenancy authority)
+[backend/src/modules/tenants/](../../../backend/src/modules/tenants/) — the central authority for
+multi-tenancy. `Tenant` entity (`tenants` table): `name`, unique `slug`, `contactEmail`, `timezone`
+(IANA, default `UTC`), optional `logoUrl`, `status`, + BaseEntity timestamps.
+- **Lifecycle** (`TenantStatus`): `PENDING` (default on create) · `TRIAL` · `ACTIVE` · `SUSPENDED` ·
+  `EXPIRED` · `DISABLED` · `ARCHIVED` (terminal). Transitions are guarded by
+  `TENANT_STATUS_TRANSITIONS` in `enums/tenant-status.enum.ts`; an illegal jump 400s.
+- **Routes** (`/tenants`, SUPER_ADMIN to create/delete; ADMIN+ to read/update): `POST /` (create →
+  PENDING), `GET /` (paginated, optional `?status=`), `GET /:id`, `PATCH /:id` (profile),
+  `PATCH /:id/status` (lifecycle change, transition-validated), `DELETE /:id`. Slug is auto-derived
+  from the name when omitted and uniqueness-enforced (numeric suffix on collision).
+- **Scoping foundation**: [common/tenant-scoped.entity.ts](../../../backend/src/common/tenant-scoped.entity.ts)
+  is `TenantScopedEntity extends BaseEntity` adding a `tenantId` uuid FK (`onDelete: CASCADE`) + index.
+  New tenant-scoped feature entities should extend it and always filter queries by `tenantId`. Existing
+  entities were NOT retrofitted (would need a data migration) — external integrations deferred.
+
+**Subscription management** (added on top of Tenants; no billing yet):
+- **Plan catalog** (`Plan` entity, `plans` table): `tier` (`PlanTier`: STARTER/PROFESSIONAL/ENTERPRISE/
+  CUSTOM), `name`, limits `maxUsers`/`maxCampaigns`/`maxTemplates`/`maxLandingPages`/`maxSendingProfiles`/
+  `emailQuota`/`storageQuota` (**-1 = unlimited**), `defaultFeatures` (jsonb `TenantFeature[]`), `isActive`.
+  `PlansBootstrap` (`OnModuleInit`) seeds STARTER/PROFESSIONAL/ENTERPRISE idempotently; CUSTOM is
+  operator-created and is the only tier allowed multiple rows. Routes `/plans` (ADMIN+ read,
+  SUPER_ADMIN write; delete blocked while a tenant references it). `PlansService`.
+- **Per-tenant subscription**: Tenant gained `planId` FK (`onDelete: SET NULL`) + `featureOverrides`
+  jsonb (`Partial<Record<TenantFeature, boolean>>` — true force-enables, false force-disables, absent =
+  inherit plan default). `TenantFeature` enum: campaigns, templates, landing_pages, sending_profiles,
+  analytics, ai_features, api_access, custom_branding.
+- **Helper methods** (`TenantSubscriptionService`): `getPlan(tenantId)`, `hasFeature(tenantId, feature)`
+  (entitlement = override ?? plan default, lifecycle-agnostic), `canUseFeature(tenantId, feature)`
+  (hasFeature **AND** status ∈ {ACTIVE, TRIAL} via `isUsableStatus`), plus `getEntitlements`,
+  `assignPlan`, `setFeatureOverrides`. Pure resolution logic in `services/entitlements.ts`
+  (`resolveFeature`/`buildEntitlements`) for testability.
+- **Routes** (`/tenants/:id`, ADMIN+): `GET subscription` (entitlements = plan limits + effective
+  feature map + `usable`), `PUT plan` (assign), `PATCH features` (merge overrides, `null` clears),
+  `GET features/:feature` (→ `{ hasFeature, canUseFeature }`).
+**Usage tracking + quotas** (`UsageService`, `TenantUsage` entity `tenant_usage`, one row/tenant, lazily
+created). `UsageMetric` enum (users, campaigns, templates, landing_pages, sending_profiles, emails_sent,
+storage) maps each to a counter column + the matching `Plan` limit via `USAGE_METRIC_CONFIG` (storage in
+**MB** to match `Plan.storageQuota`). Reusable helpers: `canCreateResource(tenantId, metric, amount?)`
+→ `QuotaCheck{allowed,used,limit,remaining,unlimited}`, `incrementUsage(…, {enforce?})` (the choke point
+that blocks over-quota creation when `enforce`), `decrementUsage` (floored at 0, for deletes),
+`getUsageSummary` (per-metric used/limit/remaining/exceeded). `assertCanCreateResource` throws
+`ForbiddenException`. Routes: `GET /tenants/:id/usage`, `GET /tenants/:id/usage/:metric/can-create`.
+
+**Status-based access control** (centralized, not scattered conditionals):
+- `TenantCapability` enum (LOGIN/READ/WRITE/LAUNCH_CAMPAIGN) + `TENANT_STATUS_CAPABILITIES` matrix is the
+  single source of truth: PENDING→none · TRIAL/ACTIVE→all · SUSPENDED/EXPIRED→login+read · DISABLED/
+  ARCHIVED→none. Pure policy fns in `access/platform-access.policy.ts` (`tenantCan`, `canLogin`,
+  `accessDenialReason`).
+- Reusable guards (`guards/`): `TenantAccessGuard` (enforces `@RequireCapability(...)`),
+  `QuotaGuard` (enforces `@EnforceQuota(metric)`). Both resolve the acting tenant via
+  `TenantContextService.loadTenant(req)` (order: `req.user.tenantId` → `x-tenant-id` header →
+  `params.tenantId`, cached on the request). Decorators in `decorators/tenant-access.decorators.ts`.
+  Guards are opt-in per route (no-metadata routes pass through), exported from `TenantsModule`.
+- **NOW WIRED END-TO-END** (2026-07-07): the tenant system is bolted into the live app.
+  - `User` has a nullable `tenant_id` column (null = platform-level, e.g. the bootstrap super-admin,
+    which bypasses all tenant gating). Feature entities `Campaign`, `EmailTemplate`, `LandingPage`,
+    `SmtpProfile` each gained a nullable `tenant_id`, set from the creator's tenant on create.
+  - **Login gate**: `AuthService.login()` calls `assertTenantMayLogin` → `canLogin(tenant.status)` after
+    the password check; a tenant that can't log in (PENDING/DISABLED/ARCHIVED) is refused + audited
+    (`auth.login.denied`). AuthModule registers the `Tenant` repo via `forFeature` (NOT by importing
+    TenantsModule — that would cycle, since TenantsModule imports AuthModule).
+  - **Guards applied**: campaigns / email-templates / smtp-profiles / landing-pages controllers add
+    `@UseGuards(…, TenantAccessGuard, QuotaGuard)`; writes carry `@RequireCapability(WRITE)`, creates add
+    `@EnforceQuota(<metric>)`, campaign launch/resume carry `@RequireCapability(LAUNCH_CAMPAIGN)`. Those
+    feature modules `import TenantsModule` to get the guards + `UsageService`.
+  - **Usage counted**: each create calls `usage.assertCanCreateResource` + `incrementUsage`; each delete
+    calls `decrementUsage`; `CampaignProcessor` bumps `EMAILS_SENT` per send. All no-op when the actor
+    has no tenant. Guards + service both enforce (belt-and-suspenders; races are low-stakes here).
+  - `TenantContextService.resolve(req)` returns `{tenantId, tenant}`; guards treat `tenantId === null`
+    as a platform request (allow-through) and a dangling id (tenant not found) as a 403.
+  - A default ACTIVE tenant (slug `default`, Enterprise plan) is seeded by `TenantsBootstrap`.
+  - **Still not tenant-scoped**: Groups (not a metered resource) and the USERS metric is tracked but not
+    auto-incremented on user creation (would need AuthModule→TenantsModule, a cycle). Query-level tenant
+    isolation on list endpoints is also still open — creates are scoped, reads aren't filtered yet.
+- Unit-tested: `tenants.service.spec.ts` (15), `entitlements.spec.ts` (9),
+  `tenant-subscription.service.spec.ts` (16), `usage.service.spec.ts` (16),
+  `platform-access.policy.spec.ts` (8), `tenant-access.guard.spec.ts` (10), plus AuthService login-gate
+  tests. `test/boot-smoke.e2e-spec.ts` boots the whole feature-module DI graph on pg-mem to catch cycles
+  / missing providers. Full suite: **202 tests green**.
 
 ### Phish-server (public attack surface) — isolated by design
 [backend/src/phish-server/phish-server.module.ts](../../../backend/src/phish-server/phish-server.module.ts).

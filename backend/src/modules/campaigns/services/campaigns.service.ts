@@ -31,6 +31,8 @@ import { EmailTemplate } from '@/modules/email/entities/email-template.entity';
 import { SmtpProfile } from '@/modules/email/entities/smtp-profile.entity';
 import { CampaignTrackingEvent } from '@/modules/email/entities/campaign-tracking-event.entity';
 import { TrackingEventType } from '@/modules/email/enums/tracking-event-type.enum';
+import { UsageService } from '@/modules/tenants/services/usage.service';
+import { UsageMetric } from '@/modules/tenants/enums/usage-metric.enum';
 
 @Injectable()
 export class CampaignsService {
@@ -44,6 +46,7 @@ export class CampaignsService {
     @InjectRepository(CampaignTrackingEvent) private events: Repository<CampaignTrackingEvent>,
     @InjectQueue('campaigns') private readonly queue: Queue,
     private audit: AuditService,
+    private usage: UsageService,
   ) {}
 
   // ─── Create ────────────────────────────────────────────────────────────
@@ -57,6 +60,12 @@ export class CampaignsService {
     const endDate = dto.endDate ? new Date(dto.endDate) : null;
     if (endDate && endDate <= startDate) {
       throw new BadRequestException('End date must be after start date');
+    }
+
+    // Enforce the tenant's campaign quota before doing any work (no-op for
+    // platform users with no tenant).
+    if (creator.tenantId) {
+      await this.usage.assertCanCreateResource(creator.tenantId, UsageMetric.CAMPAIGNS);
     }
 
     // Validate FK targets so we fail before saving.
@@ -100,6 +109,7 @@ export class CampaignsService {
       landingPageId: dto.landingPageId ?? null,
       groupId: dto.groupId ?? null,
       ownerId: creator.id,
+      tenantId: creator.tenantId ?? null,
       startDate,
       endDate,
       isAdaptive: dto.isAdaptive ?? false,
@@ -108,6 +118,10 @@ export class CampaignsService {
     });
 
     const saved = await this.campaigns.save(campaign);
+
+    if (creator.tenantId) {
+      await this.usage.incrementUsage(creator.tenantId, UsageMetric.CAMPAIGNS);
+    }
 
     await this.recipients.save(
       recipientList.map((r) =>
@@ -240,6 +254,9 @@ export class CampaignsService {
       throw new ForbiddenException('You can only delete your own campaigns');
     }
     await this.campaigns.remove(campaign);
+    if (campaign.tenantId) {
+      await this.usage.decrementUsage(campaign.tenantId, UsageMetric.CAMPAIGNS);
+    }
     await this.audit.record({
       action: 'campaign.deleted',
       actorId: user.id,

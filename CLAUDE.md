@@ -34,8 +34,8 @@ Node 20 (`.nvmrc`). Root scripts orchestrate both workspaces (`npm run dev` runs
                                                       │  /api/v1/*  (Bearer JWT + refresh cookie)
                               ┌───────────────────────▼──────────────────────────┐
                               │  ADMIN API — NestJS  :3001  (prefix /api, v1)     │
-                              │  Modules: Health, Auth(+Users+Audit),             │
-                              │  Campaigns, Email, Groups, Landing, Reports [WIRED]│
+                              │  Modules: Health, Auth(+Users+Audit), Campaigns,  │
+                              │  Email, Groups, Landing, Reports, Tenants [WIRED] │
                               │  Per-route JwtAuthGuard/RolesGuard · ValidationPipe│
                               │  Global ThrottlerGuard · cookie-parser            │
                               │  → .claude/skills/backend-dev                     │
@@ -107,9 +107,31 @@ tests pass; frontend type-checks + 57 tests pass). Recorded so the history is cl
    `status: 'idle'` and the `(app)` layout showed "Loading session…" forever (blank app). AuthGate
    runs the refresh-cookie bootstrap on mount and wires the global 401 → `/login` handler.
 
-⚠️ **Still true — many frontend screens are honest empty states**, not bugs: Adaptive, Alerts, Tenants,
-Training, Settings→Domains/Security/Billing/API, NotifPanel. They have no backend by design. To wire one
-later, replace its `EmptyState` with the standard query pattern (frontend skill).
+6. ✅ **Multi-tenancy is built and bolted in (2026-07-07).** A `Tenants` module (`/tenants`, `/plans`)
+   provides tenant lifecycle (7 statuses), subscription plans + per-tenant feature flags, usage tracking
+   with quotas, and status-based access control. It's **wired into the live app**, not standalone:
+   `User` and the metered feature entities (Campaign, EmailTemplate, LandingPage, SmtpProfile) carry a
+   nullable `tenant_id`; `AuthService` gates login on tenant status (`canLogin`); feature controllers
+   enforce quotas + capabilities via the reusable `TenantAccessGuard`/`QuotaGuard` (+ `@RequireCapability`
+   / `@EnforceQuota`); `CampaignProcessor` counts `EMAILS_SENT`. Null tenant = platform user (super-admin)
+   which bypasses gating. `test/boot-smoke.e2e-spec.ts` proves the whole DI graph boots. **Backend builds
+   clean; 202 tests pass.** Deep reference in the backend-dev skill (Tenants section).
+   - **Env note (this macOS box):** the local `class-validator` install was cache-corrupted (missing its
+     `types/` dir → build failed) and `bcrypt`'s native binary was absent (Node 25 vs the project's
+     Node 20). Fixed via `npm cache clean --force` + reinstall of class-validator and `npm rebuild bcrypt`.
+     If the build breaks again with `TS7016 class-validator` or a missing `bcrypt_lib.node`, redo those.
+
+7. ✅ **Platform-admin UI is wired (2026-07-07).** The `/tenants` screen (super-admin only) is now a full
+   admin console over the tenant backend: list/filter, create, and a per-tenant management drawer to edit
+   profile, change plan, change lifecycle status, enable/disable features, view usage bars, reset quotas,
+   and archive. Frontend: `src/components/screens/TenantsScreen.tsx`, `src/lib/api/tenants.ts`,
+   `src/hooks/useTenants.ts`; a new `POST /tenants/:id/usage/reset` (super-admin) backs "Reset quotas".
+   Frontend type-checks + 94 vitest tests pass; backend 204 tests pass.
+
+⚠️ **Still true — several frontend screens are honest empty states**, not bugs: Adaptive, Alerts,
+Training, Settings→Domains/Security/Billing/API, NotifPanel. They have no backend by design. (Tenants is
+now fully wired — see #7.) To wire one, replace its `EmptyState` with the standard query pattern
+(frontend skill).
 
 ⚠️ **Running the stack needs Redis up** (Bull) and Postgres reachable — the admin app boots both a DB
 pool and a Redis connection, and now also a second app on `:3002`. If `npm run dev` fails at boot, check

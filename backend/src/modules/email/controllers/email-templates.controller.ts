@@ -14,15 +14,25 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { AuditContext } from '@/modules/auth/services/audit.service';
+import { TenantAccessGuard } from '@/modules/tenants/guards/tenant-access.guard';
+import { QuotaGuard } from '@/modules/tenants/guards/quota.guard';
+import {
+  RequireCapability,
+  EnforceQuota,
+} from '@/modules/tenants/decorators/tenant-access.decorators';
+import { TenantCapability } from '@/modules/tenants/enums/tenant-capability.enum';
+import { UsageMetric } from '@/modules/tenants/enums/usage-metric.enum';
 
 import { EmailTemplateService } from '../services/email-template.service';
 import { CreateEmailTemplateDto, UpdateEmailTemplateDto, TestEmailTemplateDto } from '../dto';
 
 @Controller('email-templates')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantAccessGuard, QuotaGuard)
 export class EmailTemplatesController {
   constructor(private emailTemplateService: EmailTemplateService) {}
 
+  @RequireCapability(TenantCapability.WRITE)
+  @EnforceQuota(UsageMetric.TEMPLATES)
   @Post()
   async create(
     @Body() dto: CreateEmailTemplateDto,
@@ -48,6 +58,7 @@ export class EmailTemplatesController {
     return this.emailTemplateService.findById(id);
   }
 
+  @RequireCapability(TenantCapability.WRITE)
   @Patch(':id')
   async update(
     @Param('id') id: string,
@@ -61,6 +72,7 @@ export class EmailTemplatesController {
     return this.emailTemplateService.update(id, dto, req.user, ctx);
   }
 
+  @RequireCapability(TenantCapability.WRITE)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(

@@ -7,6 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { AuditLog } from './entities/audit-log.entity';
+import { Tenant } from '../tenants/entities/tenant.entity';
 
 import { AuthController } from './auth.controller';
 import { UsersController } from './users.controller';
@@ -34,7 +35,10 @@ import { AuthBootstrap } from './auth.bootstrap';
         signOptions: { expiresIn: config.get('JWT_ACCESS_EXPIRY', '15m') },
       }),
     }),
-    TypeOrmModule.forFeature([User, RefreshToken, AuditLog]),
+    // Tenant repo is registered here (not by importing TenantsModule, which
+    // would create a cycle since TenantsModule imports AuthModule) so AuthService
+    // can read tenant status for the login gate.
+    TypeOrmModule.forFeature([User, RefreshToken, AuditLog, Tenant]),
   ],
   controllers: [AuthController, UsersController, AuditController],
   providers: [

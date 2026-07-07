@@ -14,15 +14,25 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { AuditContext } from '@/modules/auth/services/audit.service';
+import { TenantAccessGuard } from '@/modules/tenants/guards/tenant-access.guard';
+import { QuotaGuard } from '@/modules/tenants/guards/quota.guard';
+import {
+  RequireCapability,
+  EnforceQuota,
+} from '@/modules/tenants/decorators/tenant-access.decorators';
+import { TenantCapability } from '@/modules/tenants/enums/tenant-capability.enum';
+import { UsageMetric } from '@/modules/tenants/enums/usage-metric.enum';
 
 import { SmtpProfileService } from '../services/smtp-profile.service';
 import { CreateSmtpProfileDto, UpdateSmtpProfileDto, TestSmtpProfileDto } from '../dto';
 
 @Controller('smtp-profiles')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantAccessGuard, QuotaGuard)
 export class SmtpProfilesController {
   constructor(private smtpProfileService: SmtpProfileService) {}
 
+  @RequireCapability(TenantCapability.WRITE)
+  @EnforceQuota(UsageMetric.SENDING_PROFILES)
   @Post()
   async create(
     @Body() dto: CreateSmtpProfileDto,
@@ -54,6 +64,7 @@ export class SmtpProfilesController {
     return this.smtpProfileService.findById(id);
   }
 
+  @RequireCapability(TenantCapability.WRITE)
   @Patch(':id')
   async update(
     @Param('id') id: string,
@@ -67,6 +78,7 @@ export class SmtpProfilesController {
     return this.smtpProfileService.update(id, dto, req.user, ctx);
   }
 
+  @RequireCapability(TenantCapability.WRITE)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(

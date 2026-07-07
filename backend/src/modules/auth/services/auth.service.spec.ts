@@ -8,6 +8,7 @@ import { TokensService } from './tokens.service';
 import { AuditService } from './audit.service';
 import { User } from '../entities/user.entity';
 import { UserRole } from '../enums/user-role.enum';
+import { Tenant } from '../../tenants/entities/tenant.entity';
 
 const PASSWORD = 'CorrectHorse1!Battery';
 
@@ -40,6 +41,7 @@ function fakeUser(overrides: Partial<User> = {}): User {
 describe('AuthService.login', () => {
   let service: AuthService;
   let userRepo: { findOne: jest.Mock; update: jest.Mock };
+  let tenantRepo: { findOne: jest.Mock };
   let tokens: { signAccessToken: jest.Mock; issueRefreshFamily: jest.Mock };
   let audit: { record: jest.Mock };
 
@@ -48,6 +50,7 @@ describe('AuthService.login', () => {
       findOne: jest.fn(),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
+    tenantRepo = { findOne: jest.fn() };
     tokens = {
       signAccessToken: jest.fn().mockReturnValue('access.jwt'),
       issueRefreshFamily: jest.fn().mockResolvedValue({
@@ -61,6 +64,7 @@ describe('AuthService.login', () => {
       providers: [
         AuthService,
         { provide: getRepositoryToken(User), useValue: userRepo },
+        { provide: getRepositoryToken(Tenant), useValue: tenantRepo },
         { provide: TokensService, useValue: tokens },
         { provide: AuditService, useValue: audit },
         {
@@ -162,6 +166,53 @@ describe('AuthService.login', () => {
     ).rejects.toThrow();
     expect(userRepo.findOne).toHaveBeenCalledWith({ where: { email: 'good@example.test' } });
   });
+
+  describe('tenant lifecycle gating', () => {
+    it('allows a platform user (no tenant) to log in without a tenant lookup', async () => {
+      userRepo.findOne.mockResolvedValueOnce(fakeUser({ passwordHash: await passwordHash() }));
+      const result = await service.login('good@example.test', PASSWORD, {
+        ip: null,
+        userAgent: null,
+      });
+      expect(result.accessToken).toBe('access.jwt');
+      expect(tenantRepo.findOne).not.toHaveBeenCalled();
+    });
+
+    it('allows login when the tenant is ACTIVE', async () => {
+      userRepo.findOne.mockResolvedValueOnce(
+        fakeUser({ passwordHash: await passwordHash(), tenantId: 'tenant-1' }),
+      );
+      tenantRepo.findOne.mockResolvedValueOnce({ id: 'tenant-1', status: 'active' });
+      const result = await service.login('good@example.test', PASSWORD, {
+        ip: null,
+        userAgent: null,
+      });
+      expect(result.accessToken).toBe('access.jwt');
+    });
+
+    it('denies login when the tenant is DISABLED', async () => {
+      userRepo.findOne.mockResolvedValueOnce(
+        fakeUser({ passwordHash: await passwordHash(), tenantId: 'tenant-1' }),
+      );
+      tenantRepo.findOne.mockResolvedValueOnce({ id: 'tenant-1', status: 'disabled' });
+      await expect(
+        service.login('good@example.test', PASSWORD, { ip: null, userAgent: null }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'auth.login.denied' }),
+      );
+    });
+
+    it('denies login when the tenant is PENDING', async () => {
+      userRepo.findOne.mockResolvedValueOnce(
+        fakeUser({ passwordHash: await passwordHash(), tenantId: 'tenant-1' }),
+      );
+      tenantRepo.findOne.mockResolvedValueOnce({ id: 'tenant-1', status: 'pending' });
+      await expect(
+        service.login('good@example.test', PASSWORD, { ip: null, userAgent: null }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
 });
 
 describe('AuthService.refresh', () => {
@@ -185,6 +236,7 @@ describe('AuthService.refresh', () => {
       providers: [
         AuthService,
         { provide: getRepositoryToken(User), useValue: { findOne: jest.fn(), update: jest.fn() } },
+        { provide: getRepositoryToken(Tenant), useValue: { findOne: jest.fn() } },
         { provide: TokensService, useValue: tokens },
         { provide: AuditService, useValue: audit },
         {
@@ -262,6 +314,7 @@ describe('AuthService.changePassword', () => {
       providers: [
         AuthService,
         { provide: getRepositoryToken(User), useValue: { findOne: jest.fn(), ...userRepo } },
+        { provide: getRepositoryToken(Tenant), useValue: { findOne: jest.fn() } },
         { provide: TokensService, useValue: tokens },
         { provide: AuditService, useValue: audit },
         {

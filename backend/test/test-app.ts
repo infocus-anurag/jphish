@@ -15,6 +15,8 @@ import { HealthModule } from '../src/modules/health/health.module';
 import { User } from '../src/modules/auth/entities/user.entity';
 import { RefreshToken } from '../src/modules/auth/entities/refresh-token.entity';
 import { AuditLog } from '../src/modules/auth/entities/audit-log.entity';
+import { Tenant } from '../src/modules/tenants/entities/tenant.entity';
+import { Plan } from '../src/modules/tenants/entities/plan.entity';
 
 const TEST_ENV: Record<string, string> = {
   NODE_ENV: 'test',
@@ -83,7 +85,7 @@ export async function createTestApp(opts: TestAppOptions = {}): Promise<{
 
   const dataSource = (await db.adapters.createTypeormDataSource({
     type: 'postgres',
-    entities: [User, RefreshToken, AuditLog],
+    entities: [User, RefreshToken, AuditLog, Tenant, Plan],
     synchronize: true,
   })) as DataSource;
   await dataSource.initialize();
@@ -106,7 +108,7 @@ export async function createTestApp(opts: TestAppOptions = {}): Promise<{
       TypeOrmModule.forRootAsync({
         useFactory: () => ({
           type: 'postgres',
-          entities: [User, RefreshToken, AuditLog],
+          entities: [User, RefreshToken, AuditLog, Tenant, Plan],
           synchronize: true,
         }),
         // Bypass the real `pg` driver entirely — return the pg-mem-backed

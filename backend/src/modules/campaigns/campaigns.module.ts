@@ -11,6 +11,7 @@ import { CampaignExecution } from './entities/campaign-execution.entity';
 import { AuthModule } from '../auth/auth.module';
 import { GroupsModule } from '../groups/groups.module';
 import { LandingModule } from '../landing/landing.module';
+import { TenantsModule } from '../tenants/tenants.module';
 import { EmailTemplate } from '../email/entities/email-template.entity';
 import { SmtpProfile } from '../email/entities/smtp-profile.entity';
 import { CampaignTrackingEvent } from '../email/entities/campaign-tracking-event.entity';
@@ -29,6 +30,7 @@ import { CampaignTrackingEvent } from '../email/entities/campaign-tracking-event
     AuthModule,
     GroupsModule,
     LandingModule,
+    TenantsModule,
   ],
   providers: [CampaignsService],
   controllers: [CampaignsController],

@@ -44,6 +44,13 @@ export class User extends BaseEntity {
   @Column({ name: 'must_change_password', default: false })
   mustChangePassword: boolean;
 
+  // Owning tenant. Null = platform-level user (e.g. the bootstrap super-admin),
+  // which is exempt from tenant status/quota gating. Kept as a plain column so
+  // the auth module stays decoupled from the tenants module (no import cycle).
+  @Index()
+  @Column({ name: 'tenant_id', type: 'uuid', nullable: true })
+  tenantId: string | null;
+
   @OneToMany(() => RefreshToken, (rt) => rt.user)
   refreshTokens: RefreshToken[];
 }

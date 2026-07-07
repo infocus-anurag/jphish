@@ -26,10 +26,18 @@ import { CurrentUser } from '@/modules/auth/decorators/current-user.decorator';
 import { Roles } from '@/modules/auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@/modules/auth/guards/roles.guard';
+import { TenantAccessGuard } from '@/modules/tenants/guards/tenant-access.guard';
+import { QuotaGuard } from '@/modules/tenants/guards/quota.guard';
+import {
+  RequireCapability,
+  EnforceQuota,
+} from '@/modules/tenants/decorators/tenant-access.decorators';
+import { TenantCapability } from '@/modules/tenants/enums/tenant-capability.enum';
+import { UsageMetric } from '@/modules/tenants/enums/usage-metric.enum';
 
 @ApiTags('Landing pages')
 @ApiBearerAuth('JWT')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantAccessGuard, QuotaGuard)
 @Controller({ path: 'landing-pages', version: '1' })
 export class LandingPagesController {
   constructor(
@@ -38,6 +46,8 @@ export class LandingPagesController {
   ) {}
 
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @RequireCapability(TenantCapability.WRITE)
+  @EnforceQuota(UsageMetric.LANDING_PAGES)
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a landing page' })
@@ -65,6 +75,7 @@ export class LandingPagesController {
   }
 
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @RequireCapability(TenantCapability.WRITE)
   @Patch(':id')
   update(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -75,6 +86,7 @@ export class LandingPagesController {
   }
 
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @RequireCapability(TenantCapability.WRITE)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() user: User) {
